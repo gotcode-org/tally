@@ -59,3 +59,20 @@ func (a *App) LogTime(id string, durationStr string) (*Task, error) {
 
 	return task, nil
 }
+
+// SetState manually updates the status of a task.
+func (a *App) SetState(id string, state string) (*Task, error) {
+	task, err := a.Store.Load(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load task %s: %w", id, err)
+	}
+
+	task.Status = TaskState(state)
+	task.UpdatedAt = time.Now()
+
+	if err := a.Store.Save(task); err != nil {
+		return nil, fmt.Errorf("failed to save task after updating state: %w", err)
+	}
+
+	return task, nil
+}

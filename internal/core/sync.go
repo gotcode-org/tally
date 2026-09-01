@@ -127,9 +127,9 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 		}
 
 		// 1.5 Update State if Closed
-		if t.ADOID != nil && t.Status == "closed" {
+		if t.ADOID != nil && t.Status != "open" && t.Status != "active" {
 			patch := []map[string]interface{}{
-				{"op": "add", "path": "/fields/System.State", "value": "Closed"},
+				{"op": "add", "path": "/fields/System.State", "value": t.Status},
 			}
 			payload, _ := json.Marshal(patch)
 			url := fmt.Sprintf("%s/%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject, *t.ADOID)
@@ -138,7 +138,14 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 			req.Header.Set("Content-Type", "application/json-patch+json")
 			req.SetBasicAuth("", adoPat)
 			
-			client.Do(req) // Blind patch, if it's already closed it just returns 200
+			resp, err := client.Do(req)
+			if err == nil {
+				if resp.StatusCode >= 400 {
+					body, _ := io.ReadAll(resp.Body)
+					fmt.Printf("  -> ADO rejected state change to '%s' (HTTP %d). Response: %s\n", t.Status, resp.StatusCode, string(body))
+				}
+				resp.Body.Close()
+			}
 		}
 
 		unsynced := t.UnsyncedSeconds()
