@@ -53,6 +53,12 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 				})
 			}
 
+			if len(t.Tags) > 0 {
+				patch = append(patch, map[string]interface{}{
+					"op": "add", "path": "/fields/System.Tags", "value": strings.Join(t.Tags, "; "),
+				})
+			}
+
 			payload, _ := json.Marshal(patch)
 			url := fmt.Sprintf("%s/%s/_apis/wit/workitems/$%s?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject, strings.ReplaceAll(adoType, " ", "%20"))
 			
