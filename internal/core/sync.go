@@ -88,8 +88,9 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 				a.Store.Save(t)
 				fmt.Printf("  -> Successfully created ADO Work Item #%d\n", *t.ADOID)
 			} else {
+				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
-				fmt.Printf("  -> Failed to create ADO item (HTTP %d). Check PAT or Config.\n", resp.StatusCode)
+				fmt.Printf("  -> Failed to create ADO item (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
 				continue
 			}
 		}
@@ -124,7 +125,8 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 				a.Store.Save(t)
 				fmt.Printf("  -> Time successfully logged to 7pace!\n")
 			} else {
-				fmt.Printf("  -> Failed to log time to 7pace (HTTP %d).\n", resp.StatusCode)
+				body, _ := io.ReadAll(resp.Body)
+				fmt.Printf("  -> Failed to log time to 7pace (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
 			}
 			resp.Body.Close()
 		}
