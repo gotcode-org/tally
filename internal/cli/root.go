@@ -1,29 +1,27 @@
 /*
-Copyright (C) 2026 The GotCode Collective
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
+    Copyright (C) 2026 The GotCode Collective
+    ...
 */
-
 package cli
 
 import (
 	"fmt"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
-// Execute is the entrypoint for the Cobra CLI root command.
+// Execute boots the Cobra CLI framework.
 func Execute() {
-	fmt.Println("Tally: The Time-Tracking Command Line")
-	os.Exit(0)
+	rootCmd := &cobra.Command{
+		Use:   "tally",
+		Short: "Tally is a blazing fast time tracker and task manager",
+	}
+
+	rootCmd.AddCommand(newAddCmd())
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }

@@ -119,3 +119,41 @@ func (s *Store) Parse(path string) (*core.Task, error) {
 
 	return task, nil
 }
+
+// GetNextID scans the directory for a given date and generates the next sequential ID (e.g. 20260901.003).
+func (s *Store) GetNextID(date time.Time) (string, error) {
+	year := date.Format("2006")
+	month := date.Format("01")
+	day := date.Format("02")
+	prefix := fmt.Sprintf("%s%s%s", year, month, day)
+
+	dir := filepath.Join(s.BaseDir, year, month, day)
+	
+	// If the directory doesn't exist, this is the first task of the day
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return prefix + ".001", nil
+	}
+
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return "", fmt.Errorf("failed to read directory %s: %w", dir, err)
+	}
+
+	maxSeq := 0
+	for _, f := range files {
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".md") {
+			name := strings.TrimSuffix(f.Name(), ".md")
+			parts := strings.Split(name, ".")
+			if len(parts) == 2 {
+				var seq int
+				if _, err := fmt.Sscanf(parts[1], "%d", &seq); err == nil {
+					if seq > maxSeq {
+						maxSeq = seq
+					}
+				}
+			}
+		}
+	}
+
+	return fmt.Sprintf("%s.%03d", prefix, maxSeq+1), nil
+}

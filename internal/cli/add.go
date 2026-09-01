@@ -1,0 +1,46 @@
+/*
+    Copyright (C) 2026 The GotCode Collective
+    ...
+*/
+package cli
+
+import (
+	"fmt"
+	"github.com/spf13/cobra"
+	"gotcode.org/tally/internal/core"
+	"gotcode.org/tally/internal/store"
+)
+
+func newAddCmd() *cobra.Command {
+	var adoType string
+	var tags []string
+
+	cmd := &cobra.Command{
+		Use:   "add [title]",
+		Short: "Create a new task",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Initialize storage (Presentation layer doing setup)
+			s, err := store.NewStore("")
+			if err != nil {
+				return err
+			}
+			app := core.NewApp(s)
+
+			// Execute business logic
+			task, err := app.AddTask(args[0], adoType, tags)
+			if err != nil {
+				return err
+			}
+
+			// Format presentation output
+			fmt.Printf("Created task %s: %s\n", task.ID, task.Title)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&adoType, "type", "", "ADO Work Item Type (e.g., Story, Bug)")
+	cmd.Flags().StringSliceVar(&tags, "tags", []string{}, "Comma-separated list of tags")
+
+	return cmd
+}
