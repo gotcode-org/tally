@@ -1,6 +1,6 @@
 /*
-    Copyright (C) 2026 The GotCode Collective
-    ...
+Copyright (C) 2026 The GotCode Collective
+...
 */
 package core
 
@@ -124,6 +124,21 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 				fmt.Printf("  -> Failed to create ADO item (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
 				continue
 			}
+		}
+
+		// 1.5 Update State if Closed
+		if t.ADOID != nil && t.Status == "closed" {
+			patch := []map[string]interface{}{
+				{"op": "add", "path": "/fields/System.State", "value": "Closed"},
+			}
+			payload, _ := json.Marshal(patch)
+			url := fmt.Sprintf("%s/%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject, *t.ADOID)
+			
+			req, _ := http.NewRequest("PATCH", url, bytes.NewBuffer(payload))
+			req.Header.Set("Content-Type", "application/json-patch+json")
+			req.SetBasicAuth("", adoPat)
+			
+			client.Do(req) // Blind patch, if it's already closed it just returns 200
 		}
 
 		unsynced := t.UnsyncedSeconds()

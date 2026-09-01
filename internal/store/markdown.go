@@ -50,7 +50,7 @@ func NewStore(baseDir string) (*Store, error) {
 
 // getTaskPath calculates the exact YYYY/MM/DD path for a given task ID.
 // Assumes ID is formatted like "20260901.001".
-func (s *Store) getTaskPath(id string) string {
+func (s *Store) GetTaskPath(id string) string {
 	if len(id) < 8 {
 		// Fallback if ID is malformed
 		return filepath.Join(s.BaseDir, "misc", id+".md")
@@ -65,7 +65,7 @@ func (s *Store) getTaskPath(id string) string {
 
 // Save writes a core.Task to disk as a Markdown file with YAML frontmatter.
 func (s *Store) Save(task *core.Task) error {
-	path := s.getTaskPath(task.ID)
+	path := s.GetTaskPath(task.ID)
 
 	// Ensure the nested YYYY/MM/DD directory exists
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -96,7 +96,7 @@ func (s *Store) Save(task *core.Task) error {
 
 // Load fetches a task strictly by its sequential ID.
 func (s *Store) Load(id string) (*core.Task, error) {
-	path := s.getTaskPath(id)
+	path := s.GetTaskPath(id)
 	return s.Parse(path)
 }
 
