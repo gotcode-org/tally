@@ -157,3 +157,33 @@ func (s *Store) GetNextID(date time.Time) (string, error) {
 
 	return fmt.Sprintf("%s.%03d", prefix, maxSeq+1), nil
 }
+
+// ListAll recursively finds all Markdown tasks in the storage directory.
+func (s *Store) ListAll() ([]*core.Task, error) {
+	var tasks []*core.Task
+
+	if _, err := os.Stat(s.BaseDir); os.IsNotExist(err) {
+		return tasks, nil // Directory doesn't exist yet, no tasks
+	}
+
+	err := filepath.Walk(s.BaseDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".md") {
+			task, err := s.Parse(path)
+			if err != nil {
+				// We can log this, but for now we skip malformed files
+				return nil
+			}
+			tasks = append(tasks, task)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk task directory: %w", err)
+	}
+
+	return tasks, nil
+}
