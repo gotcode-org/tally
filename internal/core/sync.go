@@ -86,11 +86,51 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 				t.ADOID = &adoResp.ID
 				t.UpdatedAt = time.Now()
 				a.Store.Save(t)
-				fmt.Printf("  -> Successfully created ADO Work Item #%d\n", *t.ADOID)
+				fmt.Printf("  -> Successfully created ADO Work Item #%d
+", *t.ADOID)
+			} else if resp.StatusCode == 400 && cfg.User.Email != "" {
+				resp.Body.Close()
+				fmt.Printf("  -> ADO rejected the AssignedTo identity. Retrying without assignment...
+")
+				
+				// Strip out the AssignedTo patch and retry
+				fallbackPatch := []map[string]interface{}{}
+				for _, p := range patch {
+					if p["path"] != "/fields/System.AssignedTo" {
+						fallbackPatch = append(fallbackPatch, p)
+					}
+				}
+				
+				payload, _ = json.Marshal(fallbackPatch)
+				req, _ = http.NewRequest("POST", url, bytes.NewBuffer(payload))
+				req.Header.Set("Content-Type", "application/json-patch+json")
+				req.SetBasicAuth("", pat)
+				
+				resp2, err := client.Do(req)
+				if err == nil && resp2.StatusCode >= 200 && resp2.StatusCode < 300 {
+					var adoResp ADOResponse
+					body, _ := io.ReadAll(resp2.Body)
+					json.Unmarshal(body, &adoResp)
+					resp2.Body.Close()
+					
+					t.ADOID = &adoResp.ID
+					t.UpdatedAt = time.Now()
+					a.Store.Save(t)
+					fmt.Printf("  -> Successfully created ADO Work Item #%d (Unassigned)
+", *t.ADOID)
+				} else {
+					if err == nil {
+						body, _ := io.ReadAll(resp2.Body)
+						resp2.Body.Close()
+						fmt.Printf("  -> Fallback also failed (HTTP %d). Response: %s
+", resp2.StatusCode, string(body))
+					}
+				}
 			} else {
 				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
-				fmt.Printf("  -> Failed to create ADO item (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
+				fmt.Printf("  -> Failed to create ADO item (HTTP %d). Response: %s
+", resp.StatusCode, string(body))
 				continue
 			}
 		}
