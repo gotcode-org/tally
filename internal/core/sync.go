@@ -131,11 +131,15 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 			fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n", unsynced, *t.ADOID)
 			
 			logData := map[string]interface{}{
-				"timestamp":      time.Now().Format(time.RFC3339),
-				"length":         unsynced,
-				"workItemId":     *t.ADOID,
-				"activityTypeId": cfg.SevenPace.ActivityID,
-				"comment":        "Logged via Tally terminal",
+				"timestamp":  time.Now().Format(time.RFC3339),
+				"length":     unsynced,
+				"workItemId": *t.ADOID,
+				"comment":    "Logged via Tally terminal",
+			}
+			
+			// 7pace strictly requires a valid GUID. If the user typed "Development", it throws a 500.
+			if len(cfg.SevenPace.ActivityID) >= 32 {
+				logData["activityTypeId"] = cfg.SevenPace.ActivityID
 			}
 			
 			payload, _ := json.Marshal(logData)
