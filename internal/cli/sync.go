@@ -19,9 +19,15 @@ func newSyncCmd() *cobra.Command {
 		Use:   "sync",
 		Short: "Push all offline tasks and timesheets to Azure DevOps and 7pace",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pat := os.Getenv("TALLY_ADO_PAT")
-			if pat == "" {
+			adoPat := os.Getenv("TALLY_ADO_PAT")
+			if adoPat == "" {
 				return fmt.Errorf("FATAL: TALLY_ADO_PAT environment variable is not set")
+			}
+			
+			sevenPaceToken := os.Getenv("TALLY_7PACE_TOKEN")
+			if sevenPaceToken == "" {
+				// Fallback to ADO PAT just in case, but 7pace usually requires its own token
+				sevenPaceToken = adoPat
 			}
 
 			cfg, err := config.Load()
@@ -39,7 +45,7 @@ func newSyncCmd() *cobra.Command {
 			app := core.NewApp(s)
 
 			fmt.Println("Initializing Tally Enterprise Sync Engine...")
-			if err := app.Sync(cfg, pat); err != nil {
+			if err := app.Sync(cfg, adoPat, sevenPaceToken); err != nil {
 				return err
 			}
 

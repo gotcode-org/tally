@@ -1,6 +1,6 @@
 /*
-Copyright (C) 2026 The GotCode Collective
-...
+    Copyright (C) 2026 The GotCode Collective
+    ...
 */
 package core
 
@@ -21,7 +21,7 @@ type ADOResponse struct {
 }
 
 // Sync executes the network operations to push local data to ADO and 7pace.
-func (a *App) Sync(cfg *config.Config, pat string) error {
+func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) error {
 	tasks, err := a.Store.ListTasks("")
 	if err != nil {
 		return fmt.Errorf("failed to list tasks for sync: %w", err)
@@ -31,7 +31,6 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 	orgName := extractOrgName(cfg.ADO.Organization)
 
 	for _, t := range tasks {
-		// 1. Create ADO Work Item if it doesn't exist
 		if t.ADOID == nil {
 			fmt.Printf("Syncing task %s to ADO...\n", t.ID)
 			
@@ -40,7 +39,6 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 				adoType = "Task"
 			}
 
-			// Build JSON Patch array
 			patch := []map[string]interface{}{
 				{"op": "add", "path": "/fields/System.Title", "value": t.Title},
 				{"op": "add", "path": "/fields/System.AreaPath", "value": cfg.ADO.DefaultArea},
@@ -53,12 +51,11 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 			}
 			
 			if t.Body != "" {
-				// In a real app we'd convert markdown to HTML here, but for now we push raw text
 				patch = append(patch, map[string]interface{}{
 					"op": "add", "path": "/fields/System.Description", "value": t.Body,
 				})
 			}
-
+			
 			if len(t.Tags) > 0 {
 				patch = append(patch, map[string]interface{}{
 					"op": "add", "path": "/fields/System.Tags", "value": strings.Join(t.Tags, "; "),
@@ -70,7 +67,7 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 			
 			req, _ := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 			req.Header.Set("Content-Type", "application/json-patch+json")
-			req.SetBasicAuth("", pat)
+			req.SetBasicAuth("", adoPat)
 
 			resp, err := client.Do(req)
 			if err != nil {
@@ -86,14 +83,11 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 				t.ADOID = &adoResp.ID
 				t.UpdatedAt = time.Now()
 				a.Store.Save(t)
-				fmt.Printf("  -> Successfully created ADO Work Item #%d
-", *t.ADOID)
+				fmt.Printf("  -> Successfully created ADO Work Item #%d\n", *t.ADOID)
 			} else if resp.StatusCode == 400 && cfg.User.Email != "" {
 				resp.Body.Close()
-				fmt.Printf("  -> ADO rejected the AssignedTo identity. Retrying without assignment...
-")
+				fmt.Printf("  -> ADO rejected the AssignedTo identity. Retrying without assignment...\n")
 				
-				// Strip out the AssignedTo patch and retry
 				fallbackPatch := []map[string]interface{}{}
 				for _, p := range patch {
 					if p["path"] != "/fields/System.AssignedTo" {
@@ -104,7 +98,7 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 				payload, _ = json.Marshal(fallbackPatch)
 				req, _ = http.NewRequest("POST", url, bytes.NewBuffer(payload))
 				req.Header.Set("Content-Type", "application/json-patch+json")
-				req.SetBasicAuth("", pat)
+				req.SetBasicAuth("", adoPat)
 				
 				resp2, err := client.Do(req)
 				if err == nil && resp2.StatusCode >= 200 && resp2.StatusCode < 300 {
@@ -116,26 +110,22 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 					t.ADOID = &adoResp.ID
 					t.UpdatedAt = time.Now()
 					a.Store.Save(t)
-					fmt.Printf("  -> Successfully created ADO Work Item #%d (Unassigned)
-", *t.ADOID)
+					fmt.Printf("  -> Successfully created ADO Work Item #%d (Unassigned)\n", *t.ADOID)
 				} else {
 					if err == nil {
 						body, _ := io.ReadAll(resp2.Body)
 						resp2.Body.Close()
-						fmt.Printf("  -> Fallback also failed (HTTP %d). Response: %s
-", resp2.StatusCode, string(body))
+						fmt.Printf("  -> Fallback also failed (HTTP %d). Response: %s\n", resp2.StatusCode, string(body))
 					}
 				}
 			} else {
 				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
-				fmt.Printf("  -> Failed to create ADO item (HTTP %d). Response: %s
-", resp.StatusCode, string(body))
+				fmt.Printf("  -> Failed to create ADO item (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
 				continue
 			}
 		}
 
-		// 2. Push unsynced time to 7pace
 		unsynced := t.UnsyncedSeconds()
 		if unsynced > 0 && t.ADOID != nil {
 			fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n", unsynced, *t.ADOID)
@@ -153,7 +143,7 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 			
 			req, _ := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 			req.Header.Set("Content-Type", "application/json")
-			req.SetBasicAuth("", pat) // 7pace usually accepts ADO PATs depending on auth mode
+			req.Header.Set("Authorization", "Bearer "+sevenPaceToken)
 
 			resp, err := client.Do(req)
 			if err != nil {
@@ -175,7 +165,6 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 	return nil
 }
 
-// extractOrgName converts https://dev.azure.com/myorg into "myorg"
 func extractOrgName(adoURL string) string {
 	url := strings.TrimRight(adoURL, "/")
 	parts := strings.Split(url, "/")
