@@ -96,7 +96,7 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 			}
 			
 			payload, _ := json.Marshal(logData)
-			url := fmt.Sprintf("https://%s.timehub.7pace.com/api/rest/3.0/workLogs?api-version=3.0", orgName)
+			url := fmt.Sprintf("https://%s.timehub.7pace.com/api/rest/workLogs?api-version=3.1", orgName)
 			
 			req, _ := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 			req.Header.Set("Content-Type", "application/json")
