@@ -1,6 +1,6 @@
 /*
-    Copyright (C) 2026 The GotCode Collective
-    ...
+Copyright (C) 2026 The GotCode Collective
+...
 */
 package core
 
