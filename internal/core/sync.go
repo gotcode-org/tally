@@ -46,6 +46,12 @@ func (a *App) Sync(cfg *config.Config, pat string) error {
 				{"op": "add", "path": "/fields/System.AreaPath", "value": cfg.ADO.DefaultArea},
 			}
 			
+			if cfg.User.Email != "" {
+				patch = append(patch, map[string]interface{}{
+					"op": "add", "path": "/fields/System.AssignedTo", "value": cfg.User.Email,
+				})
+			}
+			
 			if t.Body != "" {
 				// In a real app we'd convert markdown to HTML here, but for now we push raw text
 				patch = append(patch, map[string]interface{}{
