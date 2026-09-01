@@ -20,6 +20,7 @@ func Execute() {
 
 	rootCmd.AddCommand(newAddCmd())
 	rootCmd.AddCommand(newListCmd())
+	rootCmd.AddCommand(newLogCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

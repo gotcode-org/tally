@@ -94,6 +94,12 @@ func (s *Store) Save(task *core.Task) error {
 	return nil
 }
 
+// Load fetches a task strictly by its sequential ID.
+func (s *Store) Load(id string) (*core.Task, error) {
+	path := s.getTaskPath(id)
+	return s.Parse(path)
+}
+
 // Parse extracts a core.Task from a Markdown file reading the YAML frontmatter.
 func (s *Store) Parse(path string) (*core.Task, error) {
 	content, err := os.ReadFile(path)

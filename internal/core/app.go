@@ -24,6 +24,7 @@ import (
 // By declaring this interface here, we invert the dependency and prevent import cycles!
 type TaskStore interface {
 	Save(task *Task) error
+	Load(id string) (*Task, error)
 	Parse(path string) (*Task, error)
 	GetNextID(date time.Time) (string, error)
 	ListTasks(datePrefix string) ([]*Task, error)
