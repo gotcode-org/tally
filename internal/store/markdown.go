@@ -158,22 +158,32 @@ func (s *Store) GetNextID(date time.Time) (string, error) {
 	return fmt.Sprintf("%s.%03d", prefix, maxSeq+1), nil
 }
 
-// ListAll recursively finds all Markdown tasks in the storage directory.
-func (s *Store) ListAll() ([]*core.Task, error) {
+// ListTasks recursively finds all Markdown tasks, optionally scoped to a specific sharded directory based on a date prefix.
+func (s *Store) ListTasks(datePrefix string) ([]*core.Task, error) {
 	var tasks []*core.Task
 
-	if _, err := os.Stat(s.BaseDir); os.IsNotExist(err) {
-		return tasks, nil // Directory doesn't exist yet, no tasks
+	targetDir := s.BaseDir
+	if len(datePrefix) >= 4 {
+		targetDir = filepath.Join(targetDir, datePrefix[0:4])
+	}
+	if len(datePrefix) >= 6 {
+		targetDir = filepath.Join(targetDir, datePrefix[4:6])
+	}
+	if len(datePrefix) >= 8 {
+		targetDir = filepath.Join(targetDir, datePrefix[6:8])
 	}
 
-	err := filepath.Walk(s.BaseDir, func(path string, info os.FileInfo, err error) error {
+	if _, err := os.Stat(targetDir); os.IsNotExist(err) {
+		return tasks, nil // Directory doesn't exist yet, no tasks for this date
+	}
+
+	err := filepath.Walk(targetDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".md") {
 			task, err := s.Parse(path)
 			if err != nil {
-				// We can log this, but for now we skip malformed files
 				return nil
 			}
 			tasks = append(tasks, task)

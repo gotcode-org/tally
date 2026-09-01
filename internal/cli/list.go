@@ -16,10 +16,12 @@ import (
 )
 
 func newListCmd() *cobra.Command {
+	var dateFilter string
+
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "List tasks",
+		Short:   "List tasks (optionally filtered by date)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s, err := store.NewStore("")
 			if err != nil {
@@ -27,7 +29,7 @@ func newListCmd() *cobra.Command {
 			}
 			app := core.NewApp(s)
 
-			tasks, err := app.ListTasks()
+			tasks, err := app.ListTasks(dateFilter)
 			if err != nil {
 				return err
 			}
@@ -37,14 +39,10 @@ func newListCmd() *cobra.Command {
 				return nil
 			}
 
-			// Initialize tabwriter for clean columns (like kubectl)
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-			
-			// Print header
-			fmt.Fprintln(w, "ID\tSTATE\tTYPE\tTIME\tTITLE")
+			fmt.Fprintln(w, "ID	STATE	TYPE	TIME	TITLE")
 
 			for _, t := range tasks {
-				// Convert total seconds to a human readable duration (e.g., "1h30m")
 				dur := time.Duration(t.TotalSeconds) * time.Second
 				timeStr := dur.String()
 				if t.TotalSeconds == 0 {
@@ -63,5 +61,8 @@ func newListCmd() *cobra.Command {
 			return nil
 		},
 	}
+	
+	cmd.Flags().StringVarP(&dateFilter, "date", "d", "", "Filter tasks by date (e.g. 2026, 202609, 20260901)")
+	
 	return cmd
 }

@@ -6,10 +6,9 @@ package core
 
 import "fmt"
 
-// ListTasks returns all tasks, optionally filtered (filters to be added).
-func (a *App) ListTasks() ([]*Task, error) {
-	// In the future, we can add logic here to filter out "closed" tasks or filter by date
-	tasks, err := a.Store.ListAll()
+// ListTasks returns all tasks, optionally filtered by a date prefix (YYYY, YYYYMM, YYYYMMDD).
+func (a *App) ListTasks(datePrefix string) ([]*Task, error) {
+	tasks, err := a.Store.ListTasks(datePrefix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch tasks from store: %w", err)
 	}
