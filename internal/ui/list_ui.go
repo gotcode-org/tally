@@ -322,7 +322,7 @@ func (m model) View() string {
 		cursorIndicator = fmt.Sprintf(" [%d/%d]", m.cursor+1, len(flatRows))
 	}
 	headerFull := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(" " + strings.ToUpper(m.title) + cursorIndicator + " ")
-	headerRow := lipgloss.NewStyle().Padding(0, 2).Background(CatMochaMauve).Render(m.renderHeader(widths))
+	headerRow := lipgloss.NewStyle().Background(CatMochaMauve).Render(m.renderHeader(widths))
 	
 	helpStr := " tab/shift+tab: move • enter: toggle/edit • esc: quit "
 	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(helpStr)
