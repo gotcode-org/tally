@@ -27,6 +27,10 @@ type Config struct {
 	SevenPace struct {
 		ActivityID string `yaml:"default_activity_id"`
 	} `yaml:"7pace"`
+
+	UI struct {
+		Theme string `yaml:"theme"`
+	} `yaml:"ui"`
 }
 
 // GetConfigPath returns the XDG base directory for Tally config.

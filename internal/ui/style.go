@@ -3,6 +3,7 @@ package ui
 import "github.com/charmbracelet/lipgloss"
 
 type ThemePalette struct {
+	Name    string
 	Base    lipgloss.Color
 	Text    lipgloss.Color
 	Subtext lipgloss.Color
@@ -16,6 +17,7 @@ type ThemePalette struct {
 
 var (
 	CatppuccinMocha = ThemePalette{
+		Name: "Catppuccin Mocha",
 		Base:    lipgloss.Color("#1e1e2e"),
 		Text:    lipgloss.Color("#cdd6f4"),
 		Subtext: lipgloss.Color("#a6adc8"),
@@ -28,6 +30,7 @@ var (
 	}
 
 	Dracula = ThemePalette{
+		Name: "Dracula",
 		Base:    lipgloss.Color("#282a36"),
 		Text:    lipgloss.Color("#f8f8f2"),
 		Subtext: lipgloss.Color("#6272a4"),
@@ -40,6 +43,7 @@ var (
 	}
 
 	Nord = ThemePalette{
+		Name: "Nord",
 		Base:    lipgloss.Color("#2e3440"),
 		Text:    lipgloss.Color("#eceff4"),
 		Subtext: lipgloss.Color("#d8dee9"),
@@ -83,9 +87,22 @@ func init() {
 	ApplyTheme(CatppuccinMocha)
 }
 
-func CycleTheme() {
+func CycleTheme() string {
 	currentThemeIdx = (currentThemeIdx + 1) % len(availableThemes)
-	ApplyTheme(availableThemes[currentThemeIdx])
+	t := availableThemes[currentThemeIdx]
+	ApplyTheme(t)
+	return t.Name
+}
+
+func ApplyThemeByName(name string) {
+	for i, t := range availableThemes {
+		if t.Name == name {
+			currentThemeIdx = i
+			ApplyTheme(t)
+			return
+		}
+	}
+	ApplyTheme(CatppuccinMocha)
 }
 
 func ApplyTheme(t ThemePalette) {

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"gotcode.org/tally/internal/config"
 	"os"
 	"os/exec"
 	"strings"
@@ -151,7 +152,15 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 		
 	case CycleThemeMsg:
-		CycleTheme()
+		newTheme := CycleTheme()
+		
+		// Save the new theme to config
+		cfg, err := config.Load()
+		if err == nil {
+			cfg.UI.Theme = newTheme
+			config.Save(cfg)
+		}
+		
 		m.reloadList() // redraw with new global styles
 		return m, nil
 
