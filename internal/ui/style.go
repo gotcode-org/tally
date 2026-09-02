@@ -38,7 +38,7 @@ var (
 		Blue:    lipgloss.Color("#8be9fd"),
 		Green:   lipgloss.Color("#50fa7b"),
 		Red:     lipgloss.Color("#ff5555"),
-		Mauve:   lipgloss.Color("#bd93f9"),
+		Mauve:   lipgloss.Color("#ff79c6"), // Dracula Pink
 		Peach:   lipgloss.Color("#ffb86c"),
 	}
 
@@ -51,7 +51,7 @@ var (
 		Blue:    lipgloss.Color("#81a1c1"),
 		Green:   lipgloss.Color("#a3be8c"),
 		Red:     lipgloss.Color("#bf616a"),
-		Mauve:   lipgloss.Color("#b48ead"),
+		Mauve:   lipgloss.Color("#88c0d0"), // Nord Frost Blue
 		Peach:   lipgloss.Color("#ebcb8b"),
 	}
 )
