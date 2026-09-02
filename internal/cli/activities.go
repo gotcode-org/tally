@@ -79,7 +79,11 @@ func newActivitiesCmd() *cobra.Command {
 			// 7pace API can be wildly inconsistent. We will dynamically search for the array.
 			var targetArray []interface{}
 			
-			if val, ok := genericPayload["data"].([]interface{}); ok {
+			if dataObj, ok := genericPayload["data"].(map[string]interface{}); ok {
+				if val, ok := dataObj["activityTypes"].([]interface{}); ok {
+					targetArray = val
+				}
+			} else if val, ok := genericPayload["data"].([]interface{}); ok {
 				targetArray = val
 			} else if val, ok := genericPayload["value"].([]interface{}); ok {
 				targetArray = val
