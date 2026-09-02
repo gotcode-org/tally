@@ -267,9 +267,21 @@ func getRowTitle(row FlatRow) string {
 }
 
 func renderRow(title, typeStr, statusCell, progress string, widths []int, isCursor bool, rowStyle lipgloss.Style) string {
-	formatColLeft := func(txt string, w int) string {
+	formatColLeftRaw := func(txt string, w int) string {
+		// Because txt has NO ANSI escapes, we can safely slice it
+		// (Converting to runes prevents breaking multi-byte characters)
+		runes := []rune(txt)
+		if len(runes) > w {
+			return rowStyle.Render(string(runes[:w-3]) + "...")
+		}
+		spaces := strings.Repeat(" ", w-len(runes))
+		return rowStyle.Render(txt + spaces)
+	}
+	
+	formatColLeftANSI := func(txt string, w int) string {
 		visibleLen := lipgloss.Width(txt)
 		if visibleLen > w {
+			// This is technically unsafe for ANSI, but we only use it for short strings like TimeText
 			return rowStyle.Render(txt[:w-3] + "...")
 		}
 		spaces := strings.Repeat(" ", w-visibleLen)
@@ -293,10 +305,10 @@ func renderRow(title, typeStr, statusCell, progress string, widths []int, isCurs
 		rowStyle = ActiveRowStyle
 	}
 
-	c1 := formatColLeft(rowStyle.Render(title), widths[0])
+	c1 := formatColLeftRaw(title, widths[0])
 	c2 := formatColCenter(typeStr, widths[1])
 	c3 := formatColCenter(statusCell, widths[2])
-	c4 := formatColLeft(rowStyle.Render(progress), widths[3])
+	c4 := formatColLeftANSI(progress, widths[3])
 
 	prefix := "  "
 	if isCursor {
