@@ -144,6 +144,7 @@ func (m *MainModel) buildCreateForm() {
 	f := NewForm("CREATE NEW TASK")
 	f.AddTextBox("title", "Title", "Enter task title...", "")
 	f.AddSelector("type", "Type", []string{"Task", "Story", "Technical Story", "Bug"}, "")
+	f.AddTextBox("tags", "Tags", "comma separated (e.g. urgent, backend)", "")
 	f.AddBoolean("backlog", "Backlog?", "")
 	f.AddSelector("recur", "Recurrence", []string{"", "daily", "weekly", "monthly"}, "")
 	
@@ -151,8 +152,17 @@ func (m *MainModel) buildCreateForm() {
 		return func() tea.Msg {
 			title := form.GetString("title")
 			adoType := form.GetString("type")
+			tagStr := form.GetString("tags")
+			
+			var tags []string
+			if tagStr != "" {
+				for _, t := range strings.Split(tagStr, ",") {
+					tags = append(tags, strings.TrimSpace(t))
+				}
+			}
+
 			if title != "" {
-				m.coreApp.AddTask(title, adoType, []string{}, form.GetString("backlog") == "True", form.GetString("recur"))
+				m.coreApp.AddTask(title, adoType, tags, form.GetString("backlog") == "True", form.GetString("recur"))
 			}
 			return FormSubmitMsg{}
 		}
