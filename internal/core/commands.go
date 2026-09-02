@@ -12,7 +12,7 @@ import (
 )
 
 // AddTask contains the pure business logic for creating a new task.
-func (a *App) AddTask(title string, adoType string, tags []string, isBacklog bool, recurrence string, parentID string) (*Task, error) {
+func (a *App) AddTask(title string, adoType string, tags []string, isBacklog bool, recurrence string, parentID string, swimlane string) (*Task, error) {
 	now := time.Now()
 
 	// 1. Generate the sequential local ID
@@ -36,7 +36,9 @@ func (a *App) AddTask(title string, adoType string, tags []string, isBacklog boo
 		ADOType:   adoType,
 	}
 	
-	if cfg, err := config.Load(); err == nil && cfg.ADO.DefaultSwimlane != "" {
+	if swimlane != "" {
+		task.Swimlane = swimlane
+	} else if cfg, err := config.Load(); err == nil && cfg.ADO.DefaultSwimlane != "" {
 		task.Swimlane = cfg.ADO.DefaultSwimlane
 	}
 

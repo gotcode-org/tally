@@ -179,6 +179,12 @@ func (m *MainModel) buildCreateForm(parentID string) {
 	f.AddBoolean("backlog", "Backlog?", "")
 	f.AddSelector("recur", "Recurrence", []string{"", "daily", "weekdays", "weekly", "monthly"}, "")
 	
+	if cfg, err := config.Load(); err == nil && len(cfg.ADO.Swimlanes) > 0 {
+		opts := []string{""}
+		opts = append(opts, cfg.ADO.Swimlanes...)
+		f.AddSelector("swimlane", "Swimlane", opts, cfg.ADO.DefaultSwimlane)
+	}
+	
 	f.AddButton("CREATE", ThemeGreen, ThemeBase, func(form *FormModel) tea.Cmd {
 		return func() tea.Msg {
 			title := form.GetString("title")
@@ -193,7 +199,7 @@ func (m *MainModel) buildCreateForm(parentID string) {
 			}
 
 			if title != "" {
-				m.coreApp.AddTask(title, adoType, tags, form.GetString("backlog") == "True", form.GetString("recur"), parentID)
+				m.coreApp.AddTask(title, adoType, tags, form.GetString("backlog") == "True", form.GetString("recur"), parentID, form.GetString("swimlane"))
 			}
 			return FormSubmitMsg{}
 		}
