@@ -151,9 +151,6 @@ func (f *FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		f.Height = int(float64(msg.Height) * f.HeightPct)
 		
 		for _, field := range f.Fields {
-			if field.Type == FieldText {
-				field.TextInput.Width = f.Width - 10
-			}
 			if field.Type == FieldTextArea {
 				field.TextArea.SetWidth(f.Width - 10)
 			}
@@ -244,9 +241,9 @@ func (f *FormModel) View() string {
 		var view string
 		switch field.Type {
 		case FieldText:
-			view = field.TextInput.View()
+			view = lipgloss.NewStyle().Background(ThemeOverlay).Render(field.TextInput.View())
 		case FieldTextArea:
-			view = field.TextArea.View()
+			view = lipgloss.NewStyle().Background(ThemeOverlay).Render(field.TextArea.View())
 		case FieldSelector, FieldBoolean:
 			statusStr := ""
 			for j, opt := range field.Options {
