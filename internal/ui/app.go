@@ -421,6 +421,10 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 		
+	case RefreshMsg:
+		m.reloadList()
+		return m, nil
+
 	case CycleThemeMsg:
 		newTheme := CycleTheme()
 		

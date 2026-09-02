@@ -21,6 +21,8 @@ type EditTaskMsg struct{ ID string }
 type EditorFinishedMsg struct{ Err error }
 type SyncTasksMsg struct{}
 type CycleThemeMsg struct{}
+
+type RefreshMsg struct{}
 type SyncFinishedMsg struct{ Err error }
 
 type ListItem struct {
@@ -112,6 +114,8 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "t":
 			return m, func() tea.Msg { return CycleThemeMsg{} }
+		case "r":
+			return m, func() tea.Msg { return RefreshMsg{} }
 		case "s":
 			return m, func() tea.Msg { return SyncTasksMsg{} }
 		case "e", "enter":
@@ -511,7 +515,7 @@ func (m ListModel) View() string {
 	headerRow := lipgloss.NewStyle().Background(ThemeMauve).Render(m.renderHeader(widths))
 	
 	themeDisplay := GetCurrentThemeName()
-	helpStr := " ↑/↓: move • space: expand • enter/e: edit • n: new • a: add time • m: start (move) • x: delete • t: theme (" + themeDisplay + ") • esc: quit "
+	helpStr := " ↑/↓: move • space: expand • enter/e: edit • n: new • a: add time • m: start (move) • x: delete • r: refresh • t: theme (" + themeDisplay + ") • esc: quit "
 	
 	footerContent := helpStr
 	if m.TimeStats != "" {
