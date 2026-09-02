@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-09-02
 ### Added
+- **5 New Color Themes**: Added Gruvbox, Tokyo Night, Rosé Pine, Monokai, and Solarized Dark to the TUI's rotation (press `t` to cycle through them).
 - **TUI Time Summary**: Added live granular time logging summary counters (Day, Week, Month, Year) to the footer of the TUI dashboard.
 - **Dynamic Swimlane TUI Dropdown**: Added a dynamic dropdown to the TUI "Create Task" modal to select ADO swimlanes, driven by a new `ado.swimlanes` array in `config.yaml`.
 - **Default Swimlane Auto-Routing**: Added `ado.default_swimlane` configuration setting so newly created tasks automatically route to the correct ADO board lane upon creation.
