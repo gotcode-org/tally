@@ -100,7 +100,8 @@ func newActivitiesCmd() *cobra.Command {
 			}
 
 			if len(items) == 0 {
-				fmt.Println("No activity types found or unexpected JSON format.")
+				fmt.Println("No activity types found or unexpected JSON format. Dumping raw JSON payload for inspection:\n")
+				fmt.Println(string(bodyBytes))
 				return nil
 			}
 
