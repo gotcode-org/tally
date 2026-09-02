@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-02
+
 ### Fixed
 - Fixed critical TUI transparency bugs where ANSI reset codes (`\x1b[0m`) emitted by Bubbletea text inputs and borders would shatter the UI background and expose the terminal's native background.
 - Resolved severe contrast issues when cycling themes (specifically in Nord) by dynamically checking the active row's state and inverting text highlights when necessary.
@@ -33,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standardized `GPL-3.0` License headers applied to all Go source files.
 
 ## [Unreleased]
+
+## [0.1.0] - 2026-09-02
 ### Added
 - **ADO Hierarchies**: Full parent-child relationship support. Subtasks can be created directly from the TUI by highlighting a parent Story and pressing `c`.
 - **Dashboard Nesting**: Subtasks visually render indented underneath their parent Story on the TUI dashboard tree.
