@@ -50,6 +50,7 @@ func (m *MainModel) reloadList() {
 	var items []*ListItem
 	var lastYear, lastMonth, lastDay *ListItem
 	var backlogNode *ListItem
+	var templatesNode *ListItem
 	
 	for _, t := range tasks {
 		c := ThemeBlue
@@ -65,11 +66,6 @@ func (m *MainModel) reloadList() {
 			timeStr = fmt.Sprintf("%.1fh", hours)
 		}
 
-		// Exclude raw templates from the dashboard completely (they spawn invisible clones)
-		if strings.HasPrefix(t.ID, "recur-") {
-			continue
-		}
-
 		titleStr := t.ID + " - " + t.Title
 		if t.Recurrence != "" {
 			titleStr = "↻ " + titleStr
@@ -82,6 +78,16 @@ func (m *MainModel) reloadList() {
 			Status:    string(t.Status),
 			TimeText:  timeStr,
 			TypeColor: c,
+		}
+
+		// Intercept Templates so they skip chronological binning
+		if strings.HasPrefix(t.ID, "recur-") {
+			if templatesNode == nil {
+				// Keep it collapsed by default so it doesn't clutter the UI
+				templatesNode = &ListItem{Title: "Templates", Expanded: false} 
+			}
+			templatesNode.Children = append(templatesNode.Children, taskItem)
+			continue
 		}
 
 		// Intercept Backlog tasks so they skip chronological binning
@@ -118,9 +124,12 @@ func (m *MainModel) reloadList() {
 		lastDay.Children = append(lastDay.Children, taskItem)
 	}
 
-	// If we found any backlog tasks, prepend the Backlog node to the top of the dashboard!
+	// Prepend our special folders to the top of the dashboard
 	if backlogNode != nil {
 		items = append([]*ListItem{backlogNode}, items...)
+	}
+	if templatesNode != nil {
+		items = append([]*ListItem{templatesNode}, items...)
 	}
 
 	m.list = NewListModel("TALLY DASHBOARD", items)
