@@ -54,9 +54,73 @@ var (
 		Mauve:   lipgloss.Color("#88c0d0"), // Nord Frost Blue
 		Peach:   lipgloss.Color("#ebcb8b"),
 	}
+	Gruvbox = ThemePalette{
+		Name: "Gruvbox",
+		Base:    lipgloss.Color("#282828"),
+		Text:    lipgloss.Color("#ebdbb2"),
+		Subtext: lipgloss.Color("#a89984"),
+		Overlay: lipgloss.Color("#504945"),
+		Blue:    lipgloss.Color("#83a598"),
+		Green:   lipgloss.Color("#b8bb26"),
+		Red:     lipgloss.Color("#fb4934"),
+		Mauve:   lipgloss.Color("#d3869b"),
+		Peach:   lipgloss.Color("#fe8019"),
+	}
+
+	TokyoNight = ThemePalette{
+		Name: "Tokyo Night",
+		Base:    lipgloss.Color("#1a1b26"),
+		Text:    lipgloss.Color("#c0caf5"),
+		Subtext: lipgloss.Color("#a9b1d6"),
+		Overlay: lipgloss.Color("#414868"),
+		Blue:    lipgloss.Color("#7aa2f7"),
+		Green:   lipgloss.Color("#9ece6a"),
+		Red:     lipgloss.Color("#f7768e"),
+		Mauve:   lipgloss.Color("#bb9af7"),
+		Peach:   lipgloss.Color("#ff9e64"),
+	}
+
+	RosePine = ThemePalette{
+		Name: "Rosé Pine",
+		Base:    lipgloss.Color("#191724"),
+		Text:    lipgloss.Color("#e0def4"),
+		Subtext: lipgloss.Color("#908caa"),
+		Overlay: lipgloss.Color("#44415a"),
+		Blue:    lipgloss.Color("#9ccfd8"),
+		Green:   lipgloss.Color("#31748f"),
+		Red:     lipgloss.Color("#ebbcba"),
+		Mauve:   lipgloss.Color("#c4a7e7"),
+		Peach:   lipgloss.Color("#f6c177"),
+	}
+
+	Monokai = ThemePalette{
+		Name: "Monokai",
+		Base:    lipgloss.Color("#2d2a2e"),
+		Text:    lipgloss.Color("#fcfcfa"),
+		Subtext: lipgloss.Color("#939293"),
+		Overlay: lipgloss.Color("#403e41"),
+		Blue:    lipgloss.Color("#78dce8"),
+		Green:   lipgloss.Color("#a9dc76"),
+		Red:     lipgloss.Color("#ff6188"),
+		Mauve:   lipgloss.Color("#ab9df2"),
+		Peach:   lipgloss.Color("#fc9867"),
+	}
+
+	SolarizedDark = ThemePalette{
+		Name: "Solarized Dark",
+		Base:    lipgloss.Color("#002b36"),
+		Text:    lipgloss.Color("#839496"),
+		Subtext: lipgloss.Color("#586e75"),
+		Overlay: lipgloss.Color("#073642"),
+		Blue:    lipgloss.Color("#268bd2"),
+		Green:   lipgloss.Color("#859900"),
+		Red:     lipgloss.Color("#dc322f"),
+		Mauve:   lipgloss.Color("#6c71c4"),
+		Peach:   lipgloss.Color("#cb4b16"),
+	}
 )
 
-var availableThemes = []ThemePalette{CatppuccinMocha, Dracula, Nord}
+var availableThemes = []ThemePalette{CatppuccinMocha, Dracula, Nord, Gruvbox, TokyoNight, RosePine, Monokai, SolarizedDark}
 var currentThemeIdx = 0
 
 var (
