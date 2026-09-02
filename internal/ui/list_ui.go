@@ -16,6 +16,8 @@ var (
 	ActiveRowStyle = lipgloss.NewStyle().Foreground(CatMochaText).Background(CatMochaOverlay).Bold(true)
 )
 
+type CreateNewTaskMsg struct{}
+
 type ListItem struct {
 	ID           string
 	Title        string
@@ -36,7 +38,7 @@ type FlatRow struct {
 	Item        *ListItem
 }
 
-type model struct {
+type ListModel struct {
 	title          string
 	items          []*ListItem
 	cursor         int
@@ -46,8 +48,8 @@ type model struct {
 	heightPct      float64
 }
 
-func initialModel(title string, items []*ListItem) model {
-	return model{
+func NewListModel(title string, items []*ListItem) ListModel {
+	return ListModel{
 		title:     title,
 		items:     items,
 		cursor:    0,
@@ -56,11 +58,11 @@ func initialModel(title string, items []*ListItem) model {
 	}
 }
 
-func (m model) Init() tea.Cmd {
+func (m ListModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m *model) getFlatRows() []FlatRow {
+func (m *ListModel) getFlatRows() []FlatRow {
 	var rows []FlatRow
 	var flatten func(items []*ListItem, depth int)
 	flatten = func(items []*ListItem, depth int) {
@@ -81,7 +83,7 @@ func (m *model) getFlatRows() []FlatRow {
 	return rows
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.terminalWidth = msg.Width
@@ -91,6 +93,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
+		case "n":
+			return m, func() tea.Msg { return CreateNewTaskMsg{} }
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -110,7 +114,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) renderHeader(widths []int) string {
+func (m ListModel) renderHeader(widths []int) string {
 	cells := []string{}
 	headers := []string{"NAME", "TYPE", "STATUS", "PROGRESS"}
 
@@ -254,7 +258,7 @@ func renderRow(title, typeStr, statusCell, progress string, widths []int, isCurs
 	return prefix + c1 + separator + c2 + separator + c3 + separator + c4
 }
 
-func (m model) View() string {
+func (m ListModel) View() string {
 	if m.terminalWidth == 0 || m.terminalHeight == 0 {
 		return ""
 	}
@@ -336,7 +340,7 @@ func (m model) View() string {
 }
 
 func RunList(title string, items []*ListItem) error {
-	m := initialModel(title, items)
+	m := NewListModel(title, items)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		return err
