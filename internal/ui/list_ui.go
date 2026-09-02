@@ -317,12 +317,9 @@ func (m ListModel) View() string {
 			rowStyle = StoryRowStyle
 		}
 
-		badgeStyle := lipgloss.NewStyle().Foreground(ThemeBase).Background(row.Item.TypeColor).Bold(true).Padding(0, 1) // Keep dark text for bright badges
-		// Actually, change to ThemeText if user prefers white text
-		// Reverted back to ThemeBase for readability
 		var typeCell string
 		if row.Item.Type != "" {
-			typeCell = badgeStyle.Render(strings.ToUpper(row.Item.Type))
+			typeCell = lipgloss.NewStyle().Foreground(row.Item.TypeColor).Bold(true).Render(strings.ToUpper(row.Item.Type))
 		}
 		
 		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor)
