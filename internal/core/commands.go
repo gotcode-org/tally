@@ -48,7 +48,7 @@ func (a *App) AddTask(title string, adoType string, tags []string, isBacklog boo
 }
 
 // LogTime retroactively adds time to a task.
-func (a *App) LogTime(id string, durationStr string) (*Task, error) {
+func (a *App) LogTime(id string, durationStr string, activityID string) (*Task, error) {
 	dur, err := time.ParseDuration(durationStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid duration format (e.g. 30m, 1h30m): %w", err)
@@ -61,6 +61,13 @@ func (a *App) LogTime(id string, durationStr string) (*Task, error) {
 
 	task.TotalSeconds += int(dur.Seconds())
 	task.UpdatedAt = time.Now()
+	
+	task.TimeLogs = append(task.TimeLogs, TimeLog{
+		Timestamp:  time.Now(),
+		Seconds:    int(dur.Seconds()),
+		ActivityID: activityID,
+		Synced:     false,
+	})
 
 	if err := a.Store.Save(task); err != nil {
 		return nil, fmt.Errorf("failed to save task after logging time: %w", err)

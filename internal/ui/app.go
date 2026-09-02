@@ -180,14 +180,37 @@ func (m *MainModel) buildCreateForm() {
 }
 
 func (m *MainModel) buildLogTimeForm(id string) {
+	// Try to load activities from config for the dropdown
+	cfg, _ := config.Load()
+	activityNames := []string{"Default"}
+	if cfg != nil && cfg.SevenPace.Activities != nil {
+		for name := range cfg.SevenPace.Activities {
+			activityNames = append(activityNames, name)
+		}
+	}
+
 	f := NewForm("LOG TIME: " + id)
 	f.AddTextBox("time", "Time", "e.g., 5m, 1.5h", "")
+	if len(activityNames) > 1 {
+		f.AddSelector("activity", "Activity", activityNames, "")
+	}
 	
 	f.AddButton("LOG TIME", ThemeGreen, ThemeBase, func(form *FormModel) tea.Cmd {
 		return func() tea.Msg {
 			timeStr := form.GetString("time")
+			activityName := form.GetString("activity")
+			
+			var activityID string
+			if cfg != nil {
+				if activityName == "Default" || activityName == "" {
+					activityID = cfg.SevenPace.ActivityID
+				} else {
+					activityID = cfg.SevenPace.Activities[activityName]
+				}
+			}
+
 			if timeStr != "" {
-				m.coreApp.LogTime(id, timeStr)
+				m.coreApp.LogTime(id, timeStr, activityID)
 			}
 			return FormSubmitMsg{}
 		}

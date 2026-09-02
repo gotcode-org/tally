@@ -25,7 +25,8 @@ type Config struct {
 	} `yaml:"ado"`
 
 	SevenPace struct {
-		ActivityID string `yaml:"default_activity_id"`
+		ActivityID string            `yaml:"default_activity_id"`
+		Activities map[string]string `yaml:"activities,omitempty"`
 	} `yaml:"7pace"`
 
 	UI struct {

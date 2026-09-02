@@ -55,13 +55,26 @@ type Task struct {
 	TotalSeconds  int        `yaml:"total_seconds"`          // Total time tracked locally
 	SyncedSeconds int        `yaml:"synced_seconds"`         // Time successfully pushed to 7pace
 	ActiveTimer   *time.Time `yaml:"active_timer,omitempty"` // When the timer was started (nil if paused)
+	TimeLogs      []TimeLog  `yaml:"time_logs,omitempty"`    // Granular time entries
+
+	// The Raw Markdown Body
 
 	// The Raw Markdown Body
 	// This is explicitly ignored by the YAML parser so we can handle it manually
 	Body string `yaml:"-"` 
 }
 
+
+// TimeLog represents a discrete block of time logged to a task.
+type TimeLog struct {
+	Timestamp  time.Time `yaml:"timestamp"`
+	Seconds    int       `yaml:"seconds"`
+	ActivityID string    `yaml:"activity_id,omitempty"`
+	Synced     bool      `yaml:"synced"`
+}
+
 // UnsyncedSeconds returns the amount of time that hasn't been pushed to 7pace yet.
+
 func (t *Task) UnsyncedSeconds() int {
 	return t.TotalSeconds - t.SyncedSeconds
 }
