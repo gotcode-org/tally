@@ -114,7 +114,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return CycleThemeMsg{} }
 		case "s":
 			return m, func() tea.Msg { return SyncTasksMsg{} }
-		case "e":
+		case "e", "enter":
 			flatRows := m.getFlatRows()
 			if len(flatRows) > 0 {
 				row := flatRows[m.cursor]
@@ -154,7 +154,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.getFlatRows())-1 {
 				m.cursor++
 			}
-		case "enter":
+		case " ":
 			flatRows := m.getFlatRows()
 			if len(flatRows) > 0 {
 				row := flatRows[m.cursor]
@@ -510,7 +510,7 @@ func (m ListModel) View() string {
 	headerFull := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" " + strings.ToUpper(m.title) + cursorIndicator + " ")
 	headerRow := lipgloss.NewStyle().Background(ThemeMauve).Render(m.renderHeader(widths))
 	
-	helpStr := " ↑/↓: move • enter: expand • e: edit • n: new • a: add time • m: start (move) • x: delete • t: theme • esc: quit "
+	helpStr := " ↑/↓: move • space: expand • enter/e: edit • n: new • a: add time • m: start (move) • x: delete • t: theme • esc: quit "
 	
 	footerContent := helpStr
 	if m.TimeStats != "" {
