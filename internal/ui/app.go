@@ -122,7 +122,7 @@ func (m *MainModel) reloadList() {
 		// Intercept Backlog tasks so they skip chronological binning
 		if strings.HasPrefix(t.ID, "backlog-") {
 			if backlogNode == nil {
-				backlogNode = &ListItem{Title: "Backlog", Expanded: true}
+				backlogNode = &ListItem{Title: "Backlog", Expanded: false}
 			}
 			backlogNode.Children = append(backlogNode.Children, taskItem)
 			continue
@@ -144,20 +144,20 @@ func (m *MainModel) reloadList() {
 		dStr := t.CreatedAt.Format("02 (Mon)")
 		
 		if lastYear == nil || lastYear.Title != yStr {
-			lastYear = &ListItem{Title: yStr, Expanded: true}
+			lastYear = &ListItem{Title: yStr, Expanded: false}
 			items = append(items, lastYear)
 			lastMonth = nil // Reset month and day
 			lastDay = nil
 		}
 		
 		if lastMonth == nil || lastMonth.Title != mStr {
-			lastMonth = &ListItem{Title: mStr, Expanded: true}
+			lastMonth = &ListItem{Title: mStr, Expanded: false}
 			lastYear.Children = append(lastYear.Children, lastMonth)
 			lastDay = nil
 		}
 		
 		if lastDay == nil || lastDay.Title != dStr {
-			lastDay = &ListItem{Title: dStr, Expanded: true}
+			lastDay = &ListItem{Title: dStr, Expanded: false}
 			lastMonth.Children = append(lastMonth.Children, lastDay)
 		}
 		
