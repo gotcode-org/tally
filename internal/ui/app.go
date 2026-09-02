@@ -112,9 +112,11 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.terminalWidth = msg.Width
 		m.terminalHeight = msg.Height
-		m.list.Update(msg)
+		newM, _ := m.list.Update(msg)
+		m.list = newM.(ListModel)
 		if m.form != nil {
-			m.form.Update(msg)
+			newF, _ := m.form.Update(msg)
+			m.form = newF.(*FormModel)
 		}
 		return m, nil
 		
