@@ -316,17 +316,26 @@ func (m ListModel) View() string {
 		if row.Depth > 0 {
 			rowStyle = StoryRowStyle
 		}
+		
+		bgStyle := rowStyle
+		if isCursor {
+			bgStyle = ActiveRowStyle
+		}
 
 		var typeCell string
 		if row.Item.Type != "" {
-			typeCell = lipgloss.NewStyle().Foreground(row.Item.TypeColor).Background(rowStyle.GetBackground()).Bold(true).Render(strings.ToUpper(row.Item.Type))
+			typeCell = lipgloss.NewStyle().Foreground(row.Item.TypeColor).Background(bgStyle.GetBackground()).Bold(true).Render(strings.ToUpper(row.Item.Type))
 		}
 		
 		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor)
 
 		var progressCell string
 		if row.Item.TimeText != "" {
-			progressCell = lipgloss.NewStyle().Foreground(ThemeOverlay).Render(row.Item.TimeText)
+			pColor := ThemeOverlay
+			if isCursor {
+				pColor = ThemeBase // Dark text on blue active row
+			}
+			progressCell = lipgloss.NewStyle().Foreground(pColor).Render(row.Item.TimeText)
 		} else {
 			progressCell = "-"
 		}
