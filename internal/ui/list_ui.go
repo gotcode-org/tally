@@ -274,12 +274,12 @@ func (m model) View() string {
 		availableWidth = 20
 	}
 	
-	widths := []int{
-		int(float64(availableWidth) * 0.45),
-		int(float64(availableWidth) * 0.15),
-		int(float64(availableWidth) * 0.20),
-		int(float64(availableWidth) * 0.20),
-	}
+	w0 := int(float64(availableWidth) * 0.45)
+	w1 := int(float64(availableWidth) * 0.15)
+	w2 := int(float64(availableWidth) * 0.20)
+	w3 := availableWidth - (w0 + w1 + w2) // Soak up any float truncation remainder
+
+	widths := []int{w0, w1, w2, w3}
 
 	flatRows := m.getFlatRows()
 	var listSections []string
