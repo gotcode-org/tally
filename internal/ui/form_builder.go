@@ -233,17 +233,17 @@ func (f *FormModel) View() string {
 
 		var lbl string
 		if focused {
-			lbl = lipgloss.NewStyle().Foreground(ThemeGreen).Background(ThemeOverlay).Bold(true).Render("▶ " + field.Label)
+			lbl = lipgloss.NewStyle().Foreground(ThemeGreen).Background(ThemeOverlay).Bold(true).Width(contentWidth).Render("▶ " + field.Label)
 		} else {
-			lbl = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).Bold(true).Render("  " + field.Label)
+			lbl = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).Bold(true).Width(contentWidth).Render("  " + field.Label)
 		}
 
 		var view string
 		switch field.Type {
 		case FieldText:
-			view = lipgloss.NewStyle().Background(ThemeOverlay).Render(field.TextInput.View())
+			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render(field.TextInput.View())
 		case FieldTextArea:
-			view = lipgloss.NewStyle().Background(ThemeOverlay).Render(field.TextArea.View())
+			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render(field.TextArea.View())
 		case FieldSelector, FieldBoolean:
 			statusStr := ""
 			for j, opt := range field.Options {
@@ -257,7 +257,7 @@ func (f *FormModel) View() string {
 					statusStr += lipgloss.NewStyle().Background(ThemeOverlay).Render(fmt.Sprintf(" %s %s ", prefix, opt))
 				}
 			}
-			view = statusStr
+			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render(statusStr)
 		}
 
 		if lbl != "" {
@@ -267,26 +267,26 @@ func (f *FormModel) View() string {
 		sections = append(sections, view)
 		
 		if field.Help != "" {
-			sections = append(sections, lipgloss.NewStyle().Foreground(ThemeSubtext).Background(ThemeOverlay).Italic(true).Render("    "+field.Help))
+			sections = append(sections, lipgloss.NewStyle().Foreground(ThemeSubtext).Background(ThemeOverlay).Italic(true).Width(contentWidth).Render("    "+field.Help))
 		}
 		
-		sections = append(sections, "") // Spacing between fields
+		sections = append(sections, lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render("")) // Spacing between fields
 	}
 
 	if len(buttonViews) > 0 {
-		buttonsStr := strings.Join(buttonViews, "   ")
+		buttonsStr := strings.Join(buttonViews, lipgloss.NewStyle().Background(ThemeOverlay).Render("   "))
 		// Align buttons to the center
 		sections = append(sections, lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Center).Background(ThemeOverlay).Render(buttonsStr))
 	}
 
-	sections = append(sections, "") // Spacing before footer
+	sections = append(sections, lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render("")) // Spacing before footer
 
 		helpText := " tab/shift+tab: move • ←/→: select • enter: submit • esc: quit "
 	footer := lipgloss.NewStyle().Width(f.Width).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(helpText)
 
 	// Combine body sections and force height so the footer is pushed exactly to the bottom
 	bodyContent := strings.Join(sections[1:], "\n")
-	paddedBody := lipgloss.NewStyle().Height(f.Height - 2).Render(bodyContent)
+	paddedBody := lipgloss.NewStyle().Height(f.Height - 2).Background(ThemeOverlay).Width(contentWidth).Render(bodyContent)
 
 	formContent := sections[0] + "\n" + paddedBody + "\n" + footer
 	
