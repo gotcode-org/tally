@@ -45,7 +45,14 @@ func newActivitiesCmd() *cobra.Command {
 				return fmt.Errorf("FATAL: ADO Organization is missing in config. Run 'tally config'")
 			}
 
-			url := fmt.Sprintf("https://%s.timehub.7pace.com/api/rest/activityTypes?api-version=3.1", cfg.ADO.Organization)
+			// Clean up the org name in case the user provided a full URL like https://dev.azure.com/org
+			orgName := strings.TrimRight(cfg.ADO.Organization, "/")
+			parts := strings.Split(orgName, "/")
+			if len(parts) > 0 {
+				orgName = parts[len(parts)-1]
+			}
+
+			url := fmt.Sprintf("https://%s.timehub.7pace.com/api/rest/activityTypes?api-version=3.1", orgName)
 			fmt.Printf("Fetching Activity Types from %s...\n\n", url)
 
 			req, err := http.NewRequest("GET", url, nil)
