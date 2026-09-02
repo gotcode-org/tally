@@ -31,6 +31,11 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 	orgName := extractOrgName(cfg.ADO.Organization)
 
 	for _, t := range tasks {
+		// Never sync raw templates, only their instantiated clones!
+		if strings.HasPrefix(t.ID, "recur-") {
+			continue
+		}
+
 		if t.ADOID == nil {
 			fmt.Printf("Syncing task %s to ADO...\n", t.ID)
 			
