@@ -147,7 +147,7 @@ func (m ListModel) renderHeader(widths []int) string {
 	}
 
 	prefix := lipgloss.NewStyle().Background(ThemeMauve).Render("  ")
-	separator := lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeMauve).Render(" │ ")
+	separator := lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeMauve).Render(" │ ") // Keep dark on Mauve
 	middle := prefix + strings.Join(cells, separator)
 
 	var parts []string
@@ -317,7 +317,7 @@ func (m ListModel) View() string {
 
 		badgeStyle := lipgloss.NewStyle().Foreground(ThemeBase).Background(row.Item.TypeColor).Bold(true).Padding(0, 1) // Keep dark text for bright badges
 		// Actually, change to ThemeText if user prefers white text
-		badgeStyle = lipgloss.NewStyle().Foreground(ThemeText).Background(row.Item.TypeColor).Bold(true).Padding(0, 1)
+		// Reverted back to ThemeBase for readability
 		typeCell := badgeStyle.Width(widths[1]).Align(lipgloss.Center).Render(strings.ToUpper(row.Item.Type))
 		
 		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor)
