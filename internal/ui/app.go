@@ -52,6 +52,10 @@ func (m *MainModel) reloadList() {
 	var backlogNode *ListItem
 	var templatesNode *ListItem
 	
+	// 1. Map out all task ListItems so we can nest children easily
+	itemMap := make(map[string]*ListItem)
+	
+	// 2. Pre-generate all ListItems
 	for _, t := range tasks {
 		c := ThemeBlue
 		if strings.Contains(strings.ToLower(t.ADOType), "story") {
@@ -66,19 +70,51 @@ func (m *MainModel) reloadList() {
 			timeStr = fmt.Sprintf("%.1fh", hours)
 		}
 
+		// Exclude raw templates from the dashboard completely
+		if strings.HasPrefix(t.ID, "recur-") {
+			continue
+		}
+
 		titleStr := t.ID + " - " + t.Title
 		if t.Recurrence != "" {
 			titleStr = "↻ " + titleStr
 		}
 
-		taskItem := &ListItem{
+		itemMap[t.ID] = &ListItem{
 			ID:        t.ID,
 			Title:     titleStr,
 			Type:      t.ADOType,
 			Status:    string(t.Status),
 			TimeText:  timeStr,
 			TypeColor: c,
+			Expanded:  true, // keep children visible by default
 		}
+	}
+	
+	// 3. Nest children into parents, and build a list of top-level nodes
+	var topLevelTasks []*core.Task
+	for _, t := range tasks {
+		if strings.HasPrefix(t.ID, "recur-") {
+			continue // skip templates
+		}
+		
+		if t.ParentID != "" {
+			// Find parent in the map
+			if parentNode, exists := itemMap[t.ParentID]; exists {
+				// Attach this child to the parent!
+				parentNode.Children = append(parentNode.Children, itemMap[t.ID])
+			} else {
+				// Parent is missing (maybe deleted?), render as top-level fallback
+				topLevelTasks = append(topLevelTasks, t)
+			}
+		} else {
+			// No parent, so it's a top-level node
+			topLevelTasks = append(topLevelTasks, t)
+		}
+	}
+
+	for _, t := range topLevelTasks {
+		taskItem := itemMap[t.ID]
 
 		// Intercept Templates so they skip chronological binning
 		if strings.HasPrefix(t.ID, "recur-") {
@@ -140,8 +176,12 @@ func (m *MainModel) reloadList() {
 	}
 }
 
-func (m *MainModel) buildCreateForm() {
-	f := NewForm("CREATE NEW TASK")
+func (m *MainModel) buildCreateForm(parentID string) {
+	title := "CREATE NEW TASK"
+	if parentID != "" {
+		title = "CREATE SUBTASK FOR: " + parentID
+	}
+	f := NewForm(title)
 	f.AddTextBox("title", "Title", "Enter task title...", "")
 	f.AddSelector("type", "Type", []string{"Task", "Story", "Technical Story", "Bug"}, "")
 	f.AddTextBox("tags", "Tags", "comma separated (e.g. urgent, backend)", "")
@@ -162,7 +202,7 @@ func (m *MainModel) buildCreateForm() {
 			}
 
 			if title != "" {
-				m.coreApp.AddTask(title, adoType, tags, form.GetString("backlog") == "True", form.GetString("recur"))
+				m.coreApp.AddTask(title, adoType, tags, form.GetString("backlog") == "True", form.GetString("recur"), parentID)
 			}
 			return FormSubmitMsg{}
 		}
@@ -231,6 +271,7 @@ type FormSubmitMsg struct{}
 type FormCancelMsg struct{}
 type LogTimeMsg struct{ ID string }
 type DeleteTaskMsg struct{ ID string }
+type CreateSubtaskMsg struct{ ParentID string }
 type StartTaskMsg struct{ ID string }
 
 func (m *MainModel) Init() tea.Cmd {
@@ -295,7 +336,12 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case CreateNewTaskMsg:
 		m.state = StateCreateTask
-		m.buildCreateForm()
+		m.buildCreateForm("")
+		return m, nil
+		
+	case CreateSubtaskMsg:
+		m.state = StateCreateTask
+		m.buildCreateForm(msg.ParentID)
 		return m, nil
 		
 	case LogTimeMsg:

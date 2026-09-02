@@ -81,6 +81,24 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 					"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.StoryPoints", "value": *t.StoryPoints,
 				})
 			}
+			
+			// Handle ADO Hierarchy Linking
+			if t.ParentID != "" {
+				parentTask, err := a.Store.Load(t.ParentID)
+				if err == nil && parentTask.ADOID != nil {
+					patch = append(patch, map[string]interface{}{
+						"op": "add",
+						"path": "/relations/-",
+						"value": map[string]interface{}{
+							"rel": "System.LinkTypes.Hierarchy-Reverse", // I am a child of this parent
+							"url": fmt.Sprintf("%s/_apis/wit/workitems/%d", strings.TrimRight(cfg.ADO.Organization, "/"), *parentTask.ADOID),
+							"attributes": map[string]interface{}{
+								"comment": "Linked via Tally",
+							},
+						},
+					})
+				}
+			}
 
 			payload, _ := json.Marshal(patch)
 			url := fmt.Sprintf("%s/%s/_apis/wit/workitems/$%s?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject, strings.ReplaceAll(adoType, " ", "%20"))
@@ -166,6 +184,24 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 				patch = append(patch, map[string]interface{}{
 					"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.StoryPoints", "value": *t.StoryPoints,
 				})
+			}
+			
+			// Handle ADO Hierarchy Linking
+			if t.ParentID != "" {
+				parentTask, err := a.Store.Load(t.ParentID)
+				if err == nil && parentTask.ADOID != nil {
+					patch = append(patch, map[string]interface{}{
+						"op": "add",
+						"path": "/relations/-",
+						"value": map[string]interface{}{
+							"rel": "System.LinkTypes.Hierarchy-Reverse", // I am a child of this parent
+							"url": fmt.Sprintf("%s/_apis/wit/workitems/%d", strings.TrimRight(cfg.ADO.Organization, "/"), *parentTask.ADOID),
+							"attributes": map[string]interface{}{
+								"comment": "Linked via Tally",
+							},
+						},
+					})
+				}
 			}
 			
 			if t.Body != "" {

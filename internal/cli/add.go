@@ -16,6 +16,7 @@ func newAddCmd() *cobra.Command {
 	var tags []string
 	var isBacklog bool
 	var recurrence string
+	var parentID string
 
 	cmd := &cobra.Command{
 		Use:   "add [title]",
@@ -30,7 +31,7 @@ func newAddCmd() *cobra.Command {
 			app := core.NewApp(s)
 
 			// Execute business logic
-			task, err := app.AddTask(args[0], adoType, tags, isBacklog, recurrence)
+			task, err := app.AddTask(args[0], adoType, tags, isBacklog, recurrence, parentID)
 			if err != nil {
 				return err
 			}
@@ -45,6 +46,7 @@ func newAddCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&tags, "tags", []string{}, "Comma-separated list of tags")
 	cmd.Flags().BoolVar(&isBacklog, "backlog", false, "Send the task directly to the backlog")
 	cmd.Flags().StringVar(&recurrence, "recur", "", "Set a recurrence rule (e.g., daily)")
+	cmd.Flags().StringVar(&parentID, "parent", "", "The Tally ID of the parent Story")
 
 	return cmd
 }

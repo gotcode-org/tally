@@ -11,7 +11,7 @@ import (
 )
 
 // AddTask contains the pure business logic for creating a new task.
-func (a *App) AddTask(title string, adoType string, tags []string, isBacklog bool, recurrence string) (*Task, error) {
+func (a *App) AddTask(title string, adoType string, tags []string, isBacklog bool, recurrence string, parentID string) (*Task, error) {
 	now := time.Now()
 
 	// 1. Generate the sequential local ID

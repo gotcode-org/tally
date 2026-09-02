@@ -100,6 +100,14 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "n":
 			return m, func() tea.Msg { return CreateNewTaskMsg{} }
+		case "c":
+			flatRows := m.getFlatRows()
+			if len(flatRows) > 0 {
+				row := flatRows[m.cursor]
+				if row.Item.ID != "" && !strings.HasPrefix(row.Item.ID, "backlog-") && !strings.HasPrefix(row.Item.ID, "recur-") {
+					return m, func() tea.Msg { return CreateSubtaskMsg{ParentID: row.Item.ID} }
+				}
+			}
 		case "t":
 			return m, func() tea.Msg { return CycleThemeMsg{} }
 		case "s":

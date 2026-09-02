@@ -50,6 +50,7 @@ type Task struct {
 	// Recurring Tasks
 	Recurrence string `yaml:"recurrence,omitempty"` // e.g., "daily", "weekly", "monthly"
 	TemplateID string `yaml:"template_id,omitempty"` // ID of the template this was cloned from
+	ParentID   string `yaml:"parent_id,omitempty"`   // Local Tally ID of the parent Story
 
 	// Time Tracking State
 	TotalSeconds  int        `yaml:"total_seconds"`          // Total time tracked locally
