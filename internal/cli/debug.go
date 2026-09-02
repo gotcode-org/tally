@@ -23,9 +23,9 @@ func newDebugCmd() *cobra.Command {
 				return err
 			}
 
-			adoPat := os.Getenv("ADO_PAT")
+			adoPat := os.Getenv("TALLY_ADO_PAT")
 			if adoPat == "" {
-				return fmt.Errorf("ADO_PAT environment variable is required")
+				return fmt.Errorf("TALLY_ADO_PAT environment variable is required")
 			}
 
 			url := fmt.Sprintf("%s/_apis/wit/workitems/%s?api-version=7.1", strings.TrimRight(cfg.ADO.Organization, "/"), args[0])
