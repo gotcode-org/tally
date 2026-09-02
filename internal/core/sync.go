@@ -142,32 +142,57 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 		}
 
 		// 1.5 Update State if Closed
-		if t.ADOID != nil && t.Status != "open" && t.Status != "active" {
-			patch := []map[string]interface{}{
-				{"op": "add", "path": "/fields/System.State", "value": t.Status},
+		if t.ADOID != nil {
+			patch := []map[string]interface{}{}
+			
+			// Always sync title
+			patch = append(patch, map[string]interface{}{
+				"op": "add", "path": "/fields/System.Title", "value": t.Title,
+			})
+			
+			// Sync state if specified and not generic defaults
+			if t.Status != "open" && t.Status != "active" {
+				patch = append(patch, map[string]interface{}{
+					"op": "add", "path": "/fields/System.State", "value": t.Status,
+				})
 			}
 			
-			// Inject story points into the state transition patch if they exist, 
-			// because ADO often requires Story Points to be set before a state can change!
 			if t.StoryPoints != nil {
 				patch = append(patch, map[string]interface{}{
 					"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.StoryPoints", "value": *t.StoryPoints,
 				})
 			}
-			payload, _ := json.Marshal(patch)
-			url := fmt.Sprintf("%s/%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject, *t.ADOID)
 			
-			req, _ := http.NewRequest("PATCH", url, bytes.NewBuffer(payload))
-			req.Header.Set("Content-Type", "application/json-patch+json")
-			req.SetBasicAuth("", adoPat)
-			
-			resp, err := client.Do(req)
-			if err == nil {
-				if resp.StatusCode >= 400 {
-					body, _ := io.ReadAll(resp.Body)
-					fmt.Printf("  -> ADO rejected state change to '%s' (HTTP %d). Response: %s\n", t.Status, resp.StatusCode, string(body))
+			if t.Body != "" {
+				desc, ac := parseMarkdownSections(t.Body)
+				if desc != "" {
+					patch = append(patch, map[string]interface{}{
+						"op": "add", "path": "/fields/System.Description", "value": desc,
+					})
 				}
-				resp.Body.Close()
+				if ac != "" {
+					patch = append(patch, map[string]interface{}{
+						"op": "add", "path": "/fields/Microsoft.VSTS.Common.AcceptanceCriteria", "value": ac,
+					})
+				}
+			}
+			
+			if len(patch) > 0 {
+				payload, _ := json.Marshal(patch)
+				url := fmt.Sprintf("%s/%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject, *t.ADOID)
+				
+				req, _ := http.NewRequest("PATCH", url, bytes.NewBuffer(payload))
+				req.Header.Set("Content-Type", "application/json-patch+json")
+				req.SetBasicAuth("", adoPat)
+				
+				resp, err := client.Do(req)
+				if err == nil {
+					if resp.StatusCode >= 400 {
+						body, _ := io.ReadAll(resp.Body)
+						fmt.Printf("  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
+					}
+					resp.Body.Close()
+				}
 			}
 		}
 
