@@ -267,11 +267,18 @@ func (m model) View() string {
 		Height(targetHeight)
 
 	headerWidth := targetWidth
+	
+	// Subtract the width of prefix (2) and separators (3 * 3 = 9) = 11 total static chars
+	availableWidth := headerWidth - 11
+	if availableWidth < 20 {
+		availableWidth = 20
+	}
+	
 	widths := []int{
-		int(float64(headerWidth) * 0.4),
-		int(float64(headerWidth) * 0.2),
-		int(float64(headerWidth) * 0.2),
-		int(float64(headerWidth) * 0.2) - 6,
+		int(float64(availableWidth) * 0.45),
+		int(float64(availableWidth) * 0.15),
+		int(float64(availableWidth) * 0.20),
+		int(float64(availableWidth) * 0.20),
 	}
 
 	flatRows := m.getFlatRows()
