@@ -257,6 +257,7 @@ func (f *FormModel) View() string {
 			inner := lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(ThemeSubtext).
+				BorderBackground(ThemeOverlay).
 				Background(ThemeBase).
 				Padding(0, 1).
 				Render(padded)
@@ -270,6 +271,7 @@ func (f *FormModel) View() string {
 			inner := lipgloss.NewStyle().
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(ThemeSubtext).
+				BorderBackground(ThemeOverlay).
 				Background(ThemeBase).
 				Padding(0, 1).
 				Render(taView)
