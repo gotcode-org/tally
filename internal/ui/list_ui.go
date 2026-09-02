@@ -163,6 +163,9 @@ func (m ListModel) renderHeader(widths []int) string {
 }
 
 func formatStatusCell(status string, width int, isCursor bool) string {
+	if status == "" {
+		return ""
+	}
 	var bg lipgloss.Color
 	var fg lipgloss.Color
 
@@ -191,14 +194,7 @@ func formatStatusCell(status string, width int, isCursor bool) string {
 		return badge[:width]
 	}
 
-	var style lipgloss.Style
-	if isCursor {
-		style = ActiveRowStyle.Copy().Width(width).Align(lipgloss.Center)
-	} else {
-		style = lipgloss.NewStyle().Width(width).Align(lipgloss.Center)
-	}
-
-	return style.Render(badge)
+	return badge
 }
 
 func renderProgressBar(pct float64, text string, width int) string {
@@ -240,34 +236,40 @@ func getRowTitle(row FlatRow) string {
 }
 
 func renderRow(title, typeStr, statusCell, progress string, widths []int, isCursor bool, rowStyle lipgloss.Style) string {
-	formatCol := func(txt string, w int, style lipgloss.Style) string {
-		var styled string
-		var spaces string
-		
+	formatColLeft := func(txt string, w int) string {
 		visibleLen := lipgloss.Width(txt)
-		
 		if visibleLen > w {
-			styled = style.Render(txt[:w-3] + "...")
-		} else {
-			spaces = strings.Repeat(" ", w-visibleLen)
-			styled = style.Render(txt) + style.Render(spaces)
+			return rowStyle.Render(txt[:w-3] + "...")
 		}
-		return styled
+		spaces := strings.Repeat(" ", w-visibleLen)
+		return txt + rowStyle.Render(spaces)
+	}
+	
+	formatColCenter := func(txt string, w int) string {
+		visibleLen := lipgloss.Width(txt)
+		if visibleLen > w {
+			return rowStyle.Render(txt[:w-3] + "...")
+		}
+		if txt == "" {
+			return rowStyle.Render(strings.Repeat(" ", w))
+		}
+		leftPad := (w - visibleLen) / 2
+		rightPad := w - visibleLen - leftPad
+		return rowStyle.Render(strings.Repeat(" ", leftPad)) + txt + rowStyle.Render(strings.Repeat(" ", rightPad))
 	}
 
-	activeStyle := ActiveRowStyle
 	if isCursor {
-		rowStyle = activeStyle
+		rowStyle = ActiveRowStyle
 	}
 
-	c1 := formatCol(title, widths[0], rowStyle)
-	c2 := formatCol(typeStr, widths[1], rowStyle)
-	c3 := statusCell
-	c4 := formatCol(progress, widths[3], rowStyle)
+	c1 := formatColLeft(rowStyle.Render(title), widths[0])
+	c2 := formatColCenter(typeStr, widths[1])
+	c3 := formatColCenter(statusCell, widths[2])
+	c4 := formatColLeft(rowStyle.Render(progress), widths[3])
 
 	prefix := "  "
 	if isCursor {
-		prefix = lipgloss.NewStyle().Foreground(ThemeGreen).Bold(true).Render("▶ ")
+		prefix = lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeBlue).Bold(true).Render("▶ ")
 	}
 	prefix = rowStyle.Render(prefix)
 	separator := rowStyle.Render(" │ ")
@@ -318,7 +320,10 @@ func (m ListModel) View() string {
 		badgeStyle := lipgloss.NewStyle().Foreground(ThemeBase).Background(row.Item.TypeColor).Bold(true).Padding(0, 1) // Keep dark text for bright badges
 		// Actually, change to ThemeText if user prefers white text
 		// Reverted back to ThemeBase for readability
-		typeCell := badgeStyle.Width(widths[1]).Align(lipgloss.Center).Render(strings.ToUpper(row.Item.Type))
+		var typeCell string
+		if row.Item.Type != "" {
+			typeCell = badgeStyle.Render(strings.ToUpper(row.Item.Type))
+		}
 		
 		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor)
 
