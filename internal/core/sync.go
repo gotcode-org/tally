@@ -51,9 +51,18 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 			}
 			
 			if t.Body != "" {
-				patch = append(patch, map[string]interface{}{
-					"op": "add", "path": "/fields/System.Description", "value": t.Body,
-				})
+				desc, ac := parseMarkdownSections(t.Body)
+				
+				if desc != "" {
+					patch = append(patch, map[string]interface{}{
+						"op": "add", "path": "/fields/System.Description", "value": desc,
+					})
+				}
+				if ac != "" {
+					patch = append(patch, map[string]interface{}{
+						"op": "add", "path": "/fields/Microsoft.VSTS.Common.AcceptanceCriteria", "value": ac,
+					})
+				}
 			}
 			
 			if len(t.Tags) > 0 {
@@ -212,4 +221,34 @@ func extractOrgName(adoURL string) string {
 		return parts[len(parts)-1]
 	}
 	return ""
+}
+
+// parseMarkdownSections splits the body into Description and Acceptance Criteria
+func parseMarkdownSections(body string) (description, acceptanceCriteria string) {
+	lines := strings.Split(body, "\n")
+	
+	var currentSection string = "description"
+	var descBuilder strings.Builder
+	var acBuilder strings.Builder
+	
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		lower := strings.ToLower(trimmed)
+		
+		if strings.HasPrefix(lower, "# description") {
+			currentSection = "description"
+			continue
+		} else if strings.HasPrefix(lower, "# acceptance criteria") {
+			currentSection = "ac"
+			continue
+		}
+		
+		if currentSection == "description" {
+			descBuilder.WriteString(line + "<br>")
+		} else if currentSection == "ac" {
+			acBuilder.WriteString(line + "<br>")
+		}
+	}
+	
+	return strings.TrimSpace(descBuilder.String()), strings.TrimSpace(acBuilder.String())
 }
