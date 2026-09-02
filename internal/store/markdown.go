@@ -51,6 +51,10 @@ func NewStore(baseDir string) (*Store, error) {
 // getTaskPath calculates the exact YYYY/MM/DD path for a given task ID.
 // Assumes ID is formatted like "20260901.001".
 func (s *Store) GetTaskPath(id string) string {
+	if strings.HasPrefix(id, "backlog-") {
+		return filepath.Join(s.BaseDir, "backlog", id+".md")
+	}
+
 	if len(id) < 8 {
 		// Fallback if ID is malformed
 		return filepath.Join(s.BaseDir, "misc", id+".md")
@@ -127,13 +131,21 @@ func (s *Store) Parse(path string) (*core.Task, error) {
 }
 
 // GetNextID scans the directory for a given date and generates the next sequential ID (e.g. 20260901.003).
-func (s *Store) GetNextID(date time.Time) (string, error) {
+func (s *Store) GetNextID(date time.Time, isBacklog bool) (string, error) {
 	year := date.Format("2006")
 	month := date.Format("01")
 	day := date.Format("02")
-	prefix := fmt.Sprintf("%s%s%s", year, month, day)
-
-	dir := filepath.Join(s.BaseDir, year, month, day)
+	
+	var prefix string
+	var dir string
+	
+	if isBacklog {
+		prefix = fmt.Sprintf("backlog-%s%s%s", year, month, day)
+		dir = filepath.Join(s.BaseDir, "backlog")
+	} else {
+		prefix = fmt.Sprintf("%s%s%s", year, month, day)
+		dir = filepath.Join(s.BaseDir, year, month, day)
+	}
 	
 	// If the directory doesn't exist, this is the first task of the day
 	if _, err := os.Stat(dir); os.IsNotExist(err) {

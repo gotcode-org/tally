@@ -110,13 +110,14 @@ func (m *MainModel) buildCreateForm() {
 	f := NewForm("CREATE NEW TASK")
 	f.AddTextBox("title", "Title", "Enter task title...", "")
 	f.AddSelector("type", "Type", []string{"Task", "Story", "Technical Story", "Bug"}, "")
+	f.AddBoolean("backlog", "Backlog?", "")
 	
 	f.AddButton("CREATE", ThemeGreen, ThemeBase, func(form *FormModel) tea.Cmd {
 		return func() tea.Msg {
 			title := form.GetString("title")
 			adoType := form.GetString("type")
 			if title != "" {
-				m.coreApp.AddTask(title, adoType, []string{})
+				m.coreApp.AddTask(title, adoType, []string{}, form.GetString("backlog") == "True")
 			}
 			return FormSubmitMsg{}
 		}
@@ -162,6 +163,7 @@ type FormSubmitMsg struct{}
 type FormCancelMsg struct{}
 type LogTimeMsg struct{ ID string }
 type DeleteTaskMsg struct{ ID string }
+type StartTaskMsg struct{ ID string }
 
 func (m *MainModel) Init() tea.Cmd {
 	return m.list.Init()
@@ -235,6 +237,11 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		
 	case DeleteTaskMsg:
 		m.coreApp.DeleteTask(msg.ID)
+		m.reloadList()
+		return m, nil
+		
+	case StartTaskMsg:
+		m.coreApp.StartTask(msg.ID)
 		m.reloadList()
 		return m, nil
 		

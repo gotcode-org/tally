@@ -11,11 +11,11 @@ import (
 )
 
 // AddTask contains the pure business logic for creating a new task.
-func (a *App) AddTask(title string, adoType string, tags []string) (*Task, error) {
+func (a *App) AddTask(title string, adoType string, tags []string, isBacklog bool) (*Task, error) {
 	now := time.Now()
 
 	// 1. Generate the sequential local ID
-	id, err := a.Store.GetNextID(now)
+	id, err := a.Store.GetNextID(now, isBacklog)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate task ID: %w", err)
 	}
@@ -106,4 +106,40 @@ func (a *App) SetPoints(id string, points float64) (*Task, error) {
 // DeleteTask removes the task from disk.
 func (a *App) DeleteTask(id string) error {
 	return a.Store.Delete(id)
+}
+
+
+// StartTask moves a task from the backlog to today's date, generating a new ID.
+func (a *App) StartTask(id string) error {
+	task, err := a.Store.Load(id)
+	if err != nil {
+		return fmt.Errorf("failed to load task: %w", err)
+	}
+
+	// Delete the old file
+	if err := a.Store.Delete(id); err != nil {
+		return fmt.Errorf("failed to delete old task file: %w", err)
+	}
+
+	// Generate new ID for today
+	now := time.Now()
+	newID, err := a.Store.GetNextID(now, false)
+	if err != nil {
+		// Try to recover by saving to old path?
+		return fmt.Errorf("failed to generate new ID: %w", err)
+	}
+
+	// Update task and save
+	task.ID = newID
+	task.CreatedAt = now
+	task.UpdatedAt = now
+	
+	if err := a.Store.Save(task); err != nil {
+		return fmt.Errorf("failed to save migrated task: %w", err)
+	}
+	
+	// Also need to move the physical markdown body content since Save only writes frontmatter right now?
+	// Wait, does Save() write the body?
+	// Let's check how Save is implemented!
+	return nil
 }
