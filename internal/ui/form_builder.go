@@ -57,8 +57,8 @@ type FormModel struct {
 func NewForm(title string) *FormModel {
 	return &FormModel{
 		Title:      title,
-		WidthPct:   0.95,
-		HeightPct:  0.95,
+		WidthPct:   0.50,
+		HeightPct:  0.60,
 	}
 }
 
@@ -66,9 +66,9 @@ func (f *FormModel) AddTextBox(name, label, placeholder, help string) {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
 	ti.Prompt = "  "
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(ThemeBlue).Background(ThemeOverlay)
-	ti.TextStyle = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay)
-	ti.Cursor.Style = lipgloss.NewStyle().Foreground(ThemeMauve).Background(ThemeOverlay)
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(ThemeBlue).Background(ThemeBase)
+	ti.TextStyle = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeBase)
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(ThemeMauve).Background(ThemeBase)
 	f.Fields = append(f.Fields, &Field{Type: FieldText, Name: name, Label: label, Help: help, TextInput: ti})
 }
 
@@ -78,12 +78,12 @@ func (f *FormModel) AddTextArea(name, label, placeholder, help string) {
 	ta.ShowLineNumbers = false
 	ta.SetHeight(3)
 	ta.Prompt = "  "
-	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay)
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(ThemeOverlay)
-	ta.FocusedStyle.Text = lipgloss.NewStyle().Background(ThemeOverlay)
-	ta.FocusedStyle.Prompt = lipgloss.NewStyle().Background(ThemeOverlay)
-	ta.Cursor.Style = lipgloss.NewStyle().Foreground(ThemeMauve).Background(ThemeOverlay)
-	ta.BlurredStyle.Base = lipgloss.NewStyle().Foreground(ThemeSubtext).Background(ThemeOverlay)
+	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeBase)
+	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(ThemeBase)
+	ta.FocusedStyle.Text = lipgloss.NewStyle().Background(ThemeBase)
+	ta.FocusedStyle.Prompt = lipgloss.NewStyle().Background(ThemeBase)
+	ta.Cursor.Style = lipgloss.NewStyle().Foreground(ThemeMauve).Background(ThemeBase)
+	ta.BlurredStyle.Base = lipgloss.NewStyle().Foreground(ThemeSubtext).Background(ThemeBase)
 	f.Fields = append(f.Fields, &Field{Type: FieldTextArea, Name: name, Label: label, Help: help, TextArea: ta})
 }
 
@@ -241,9 +241,40 @@ func (f *FormModel) View() string {
 		var view string
 		switch field.Type {
 		case FieldText:
-			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render(field.TextInput.View())
+			tiView := field.TextInput.View()
+			visibleLen := lipgloss.Width(tiView)
+			targetWidth := 40
+			
+			var padded string
+			if visibleLen < targetWidth {
+				spaces := lipgloss.NewStyle().Background(ThemeBase).Render(strings.Repeat(" ", targetWidth - visibleLen))
+				padded = tiView + spaces
+			} else {
+				padded = tiView
+			}
+			
+			// Give it an inset border and a dark inner background
+			inner := lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ThemeSubtext).
+				Background(ThemeBase).
+				Padding(0, 1).
+				Render(padded)
+				
+			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Align(lipgloss.Center).Render(inner)
 		case FieldTextArea:
-			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render(field.TextArea.View())
+			taView := field.TextArea.View()
+			
+			// Text areas naturally handle their width/padding internally via Base style, 
+			// so we just wrap it in a border.
+			inner := lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(ThemeSubtext).
+				Background(ThemeBase).
+				Padding(0, 1).
+				Render(taView)
+				
+			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Align(lipgloss.Center).Render(inner)
 		case FieldSelector, FieldBoolean:
 			statusStr := ""
 			for j, opt := range field.Options {
@@ -291,5 +322,5 @@ func (f *FormModel) View() string {
 	formContent := sections[0] + "\n" + paddedBody + "\n" + footer
 	
 	win := lipgloss.NewStyle().Background(ThemeOverlay).Width(f.Width).Height(f.Height).Render(formContent)
-	return lipgloss.Place(f.terminalWidth, f.terminalHeight, lipgloss.Center, lipgloss.Top, win)
+	return lipgloss.Place(f.terminalWidth, f.terminalHeight, lipgloss.Center, lipgloss.Center, win)
 }
