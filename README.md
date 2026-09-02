@@ -1,25 +1,25 @@
-# Tally
+# Tally: The Time-Tracking Command Line
 
-A blistering fast TUI/CLI task manager and time tracker driven entirely by local plain-text files. Own your data, survive cloud outages, and push your hours to the enterprise when you are ready.
+Modern task managers are heavy, bloated Electron apps that trap your data inside proprietary databases. **Tally** breaks the mold by storing your entire life in an infinitely scalable, sharded directory of human-readable Markdown files. 
 
-Part of the **[GotCode Collective](https://gotcode.org)**.
+Whether you want to quickly clock-in to a task from your bash prompt using the CLI, or launch the interactive Terminal User Interface (TUI) to visualize your daily, weekly, and monthly productivity, Tally handles it with zero network requests—acting as a bulletproof local cache for your enterprise workflow.
 
 ## Core Features
 
-- **Sharded File Storage:** Zero databases. Every task is its own Markdown file organized in a `YYYY/MM/DD` directory tree. This guarantees infinite scalability and absolutely zero Git merge conflicts when syncing across devices.
-- **Enterprise Offline Sync:** Survive cloud outages. Create tasks and track time entirely locally. When the internet returns, run `tally sync` to automatically push your hours to the **7pace TimeTracker API** and generate stories in **Azure DevOps**.
-- **Sequential Task IDs:** Every file is sequentially named, granting every task a pristine local ID (e.g., `20260831.001`). Instantly clock-in from the terminal by running `tally start 20260831.001`.
-- **Dynamic TUI Dashboards:** Launch the full-screen Bubbletea TUI and use hotkeys to instantly toggle between **Day View**, **Week View**, and **Month View** to track your long-term velocity and project burn rates.
-- **Reusable Component Architecture:** The internal UI layer is built on 100% generic, data-driven Form and List components. Business logic is strictly separated via a flat DDD/CQRS architecture in the `internal/` directory.
-- **Cascading Configuration:** Respects standard XDG Base Directories while allowing per-project `.tally/config.yaml` overrides. Seamlessly switch ADO Area Paths just by changing directories in your terminal.
+### Sharded File Storage
+Zero databases. Every task is its own Markdown file organized in a `YYYY/MM/DD` directory tree. This guarantees infinite scalability and absolutely zero Git merge conflicts when syncing across devices.
 
-## Configuration
+### Enterprise Offline Sync
+Survive cloud outages. Create tasks and track time entirely locally. When the internet returns, run `tally sync` to automatically push your hours to the **7pace TimeTracker API** and generate stories in **Azure DevOps**.
 
-Tally respects the XDG Base Directory specification:
-* **Global Config:** `~/.config/tally/config.yaml`
-* **Local Data (Tasks):** `~/.local/share/tally/tasks/`
-* **Local Overrides:** `./.tally/config.yaml` (inside your active Git repository)
+### Sequential Task IDs
+Every file is sequentially named, granting every task a pristine local ID (e.g., `20260831.001`). Instantly clock-in from the terminal by running `tally start 20260831.001`.
 
-## License
+### Dynamic TUI Dashboards
+Launch the full-screen Bubbletea TUI and use hotkeys to instantly toggle between **Day View**, **Week View**, and **Month View** to track your long-term velocity and project burn rates.
 
-This project is licensed under the GNU General Public License v3.0 (GPL-3.0) - see the [LICENSE](LICENSE) file for details.
+### Reusable Component Architecture
+The internal UI layer is built on 100% generic, data-driven Form and List components. Business logic is strictly separated via a flat DDD/CQRS architecture in the `internal/` directory.
+
+### Cascading Configuration
+Respects standard XDG Base Directories while allowing per-project `.tally/config.yaml` overrides. Seamlessly switch ADO Area Paths just by changing directories in your terminal.
