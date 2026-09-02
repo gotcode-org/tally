@@ -61,6 +61,12 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 					"op": "add", "path": "/fields/System.Tags", "value": strings.Join(t.Tags, "; "),
 				})
 			}
+			
+			if t.StoryPoints != nil {
+				patch = append(patch, map[string]interface{}{
+					"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.StoryPoints", "value": *t.StoryPoints,
+				})
+			}
 
 			payload, _ := json.Marshal(patch)
 			url := fmt.Sprintf("%s/%s/_apis/wit/workitems/$%s?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject, strings.ReplaceAll(adoType, " ", "%20"))
@@ -130,6 +136,14 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 		if t.ADOID != nil && t.Status != "open" && t.Status != "active" {
 			patch := []map[string]interface{}{
 				{"op": "add", "path": "/fields/System.State", "value": t.Status},
+			}
+			
+			// Inject story points into the state transition patch if they exist, 
+			// because ADO often requires Story Points to be set before a state can change!
+			if t.StoryPoints != nil {
+				patch = append(patch, map[string]interface{}{
+					"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.StoryPoints", "value": *t.StoryPoints,
+				})
 			}
 			payload, _ := json.Marshal(patch)
 			url := fmt.Sprintf("%s/%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject, *t.ADOID)

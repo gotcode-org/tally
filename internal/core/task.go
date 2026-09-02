@@ -44,7 +44,8 @@ type Task struct {
 
 	// Azure DevOps Metadata
 	ADOID   *int   `yaml:"ado_id,omitempty"`   // Nil if not yet synced to ADO
-	ADOType string `yaml:"ado_type,omitempty"` // e.g., "Story", "Technical Story", "Bug"
+	ADOType     string   `yaml:"ado_type,omitempty"` // e.g., "Story", "Technical Story", "Bug"
+	StoryPoints *float64 `yaml:"story_points,omitempty"` // Mapped to ADO Story Points
 
 	// Time Tracking State
 	TotalSeconds  int        `yaml:"total_seconds"`          // Total time tracked locally
