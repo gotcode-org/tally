@@ -334,12 +334,15 @@ func (m ListModel) View() string {
 		listSections = append(listSections, renderRow(titleCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle))
 	}
 
-	listSections = append(listSections, lipgloss.NewStyle().Background(ThemeOverlay).Render(""))
+	visibleRows := targetHeight - 8
+	for len(listSections) < visibleRows {
+		listSections = append(listSections, renderRow("", "", "", "", widths, false, lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeOverlay)))
+	}
 
 	paddedList := lipgloss.NewStyle().
 		Background(ThemeOverlay).
 		Width(headerWidth).
-		Height(targetHeight - 8).
+		Height(visibleRows).
 		Render(strings.Join(listSections, "\n"))
 
 	cursorIndicator := ""
