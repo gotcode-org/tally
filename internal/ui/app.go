@@ -48,8 +48,14 @@ func NewMainModel(app *core.App) *MainModel {
 }
 
 func (m *MainModel) reloadList() {
-	// Capture current expansion state before wiping
+	// Capture current expansion state and cursor before wiping
+	var selectedID string
 	if m.list.items != nil {
+		flat := m.list.getFlatRows()
+		if m.list.cursor >= 0 && m.list.cursor < len(flat) {
+			selectedID = flat[m.list.cursor].Item.ID
+		}
+		
 		var captureState func(items []*ListItem)
 		captureState = func(items []*ListItem) {
 			for _, item := range items {
@@ -275,6 +281,18 @@ func (m *MainModel) reloadList() {
 
 	m.list = NewListModel("TALLY DASHBOARD", items)
 	m.list.TimeStats = timeStatsStr
+	
+	// Restore cursor position
+	if selectedID != "" {
+		flat := m.list.getFlatRows()
+		for i, row := range flat {
+			if row.Item.ID == selectedID {
+				m.list.cursor = i
+				break
+			}
+		}
+	}
+	
 	// Propagate dimensions if already set
 	if m.terminalWidth > 0 {
 		newM, _ := m.list.Update(tea.WindowSizeMsg{Width: m.terminalWidth, Height: m.terminalHeight})
