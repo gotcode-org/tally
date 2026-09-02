@@ -82,18 +82,6 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 				})
 			}
 			
-			if len(t.Tags) > 0 {
-				patch = append(patch, map[string]interface{}{
-					"op": "add", "path": "/fields/System.Tags", "value": strings.Join(t.Tags, "; "),
-				})
-			}
-			
-			if t.Swimlane != "" && cfg.ADO.SwimlaneField != "" {
-				patch = append(patch, map[string]interface{}{
-					"op": "add", "path": "/fields/" + cfg.ADO.SwimlaneField, "value": t.Swimlane,
-				})
-			}
-			
 			if t.StoryPoints != nil {
 				patch = append(patch, map[string]interface{}{
 					"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.StoryPoints", "value": *t.StoryPoints,
