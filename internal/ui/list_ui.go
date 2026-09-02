@@ -19,14 +19,13 @@ var (
 type CreateNewTaskMsg struct{}
 
 type ListItem struct {
-	ID           string
 	Title        string
-	Description  string
 	Type         string
-	TypeColor    lipgloss.Color
 	Status       string
 	Progress     float64
 	ProgressText string
+	TimeText     string
+	TypeColor    lipgloss.Color
 	Expanded     bool
 	Children     []*ListItem
 }
@@ -116,7 +115,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m ListModel) renderHeader(widths []int) string {
 	cells := []string{}
-	headers := []string{"NAME", "TYPE", "STATUS", "PROGRESS"}
+	headers := []string{"NAME", "TYPE", "STATUS", "TIME"}
 
 	for i, col := range headers {
 		w := widths[i]
@@ -304,10 +303,10 @@ func (m ListModel) View() string {
 		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor)
 
 		var progressCell string
-		if row.Item.ProgressText != "" || row.Item.Progress > 0 {
-			progressCell = renderProgressBar(row.Item.Progress, row.Item.ProgressText, widths[3])
+		if row.Item.TimeText != "" {
+			progressCell = lipgloss.NewStyle().Foreground(CatMochaOverlay).Render(row.Item.TimeText)
 		} else {
-			progressCell = ""
+			progressCell = "-"
 		}
 
 		listSections = append(listSections, renderRow(titleCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle))

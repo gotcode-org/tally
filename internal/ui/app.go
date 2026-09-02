@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -45,10 +46,17 @@ func (m *MainModel) reloadList() {
 			c = CatMochaRed
 		}
 		
+		timeStr := ""
+		if t.TotalSeconds > 0 {
+			hours := float64(t.TotalSeconds) / 3600.0
+			timeStr = fmt.Sprintf("%.1fh", hours)
+		}
+
 		items = append(items, &ListItem{
 			Title:     t.ID + " - " + t.Title,
 			Type:      t.ADOType,
 			Status:    string(t.Status),
+			TimeText:  timeStr,
 			TypeColor: c,
 		})
 	}
