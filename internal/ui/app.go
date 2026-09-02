@@ -161,6 +161,7 @@ func (m *MainModel) buildLogTimeForm(id string) {
 type FormSubmitMsg struct{}
 type FormCancelMsg struct{}
 type LogTimeMsg struct{ ID string }
+type DeleteTaskMsg struct{ ID string }
 
 func (m *MainModel) Init() tea.Cmd {
 	return m.list.Init()
@@ -230,6 +231,11 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = StateLogTime
 		m.selectedID = msg.ID
 		m.buildLogTimeForm(msg.ID)
+		return m, nil
+		
+	case DeleteTaskMsg:
+		m.coreApp.DeleteTask(msg.ID)
+		m.reloadList()
 		return m, nil
 		
 	case FormSubmitMsg, FormCancelMsg:

@@ -19,6 +19,7 @@ func Execute() {
 	}
 
 	rootCmd.AddCommand(newAddCmd())
+	rootCmd.AddCommand(newDeleteCmd())
 	rootCmd.AddCommand(newListCmd())
 	rootCmd.AddCommand(newLogCmd())
 	rootCmd.AddCommand(newConfigCmd())

@@ -203,3 +203,13 @@ func (s *Store) ListTasks(datePrefix string) ([]*core.Task, error) {
 
 	return tasks, nil
 }
+
+
+// Delete completely removes the markdown file for a specific task.
+func (s *Store) Delete(id string) error {
+	path := s.GetTaskPath(id)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to delete task file %s: %w", path, err)
+	}
+	return nil
+}

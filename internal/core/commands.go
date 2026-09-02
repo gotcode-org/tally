@@ -101,3 +101,9 @@ func (a *App) SetPoints(id string, points float64) (*Task, error) {
 
 	return task, nil
 }
+
+
+// DeleteTask removes the task from disk.
+func (a *App) DeleteTask(id string) error {
+	return a.Store.Delete(id)
+}

@@ -120,6 +120,14 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, func() tea.Msg { return LogTimeMsg{ID: row.Item.ID} }
 				}
 			}
+		case "x":
+			flatRows := m.getFlatRows()
+			if len(flatRows) > 0 {
+				row := flatRows[m.cursor]
+				if row.Item.ID != "" {
+					return m, func() tea.Msg { return DeleteTaskMsg{ID: row.Item.ID} }
+				}
+			}
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -371,7 +379,7 @@ func (m ListModel) View() string {
 	headerFull := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" " + strings.ToUpper(m.title) + cursorIndicator + " ")
 	headerRow := lipgloss.NewStyle().Background(ThemeMauve).Render(m.renderHeader(widths))
 	
-	helpStr := " ↑/↓: move • enter: expand • e: edit • n: new • a: add time • s: sync • t: theme • esc: quit "
+	helpStr := " ↑/↓: move • enter: expand • e: edit • n: new • a: add time • x: delete • s: sync • t: theme • esc: quit "
 	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(helpStr)
 	
 	finalContent := headerFull + "\n" + headerRow + "\n" + paddedList + "\n" + footer
