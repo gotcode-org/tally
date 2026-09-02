@@ -319,7 +319,7 @@ func (m ListModel) View() string {
 
 		var typeCell string
 		if row.Item.Type != "" {
-			typeCell = lipgloss.NewStyle().Foreground(row.Item.TypeColor).Bold(true).Render(strings.ToUpper(row.Item.Type))
+			typeCell = lipgloss.NewStyle().Foreground(row.Item.TypeColor).Background(rowStyle.GetBackground()).Bold(true).Render(strings.ToUpper(row.Item.Type))
 		}
 		
 		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor)
