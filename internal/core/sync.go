@@ -76,6 +76,12 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 				})
 			}
 			
+			if t.Swimlane != "" && cfg.ADO.SwimlaneField != "" {
+				patch = append(patch, map[string]interface{}{
+					"op": "add", "path": "/fields/" + cfg.ADO.SwimlaneField, "value": t.Swimlane,
+				})
+			}
+			
 			if t.StoryPoints != nil {
 				patch = append(patch, map[string]interface{}{
 					"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.StoryPoints", "value": *t.StoryPoints,

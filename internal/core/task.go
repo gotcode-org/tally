@@ -46,6 +46,7 @@ type Task struct {
 	ADOID   *int   `yaml:"ado_id,omitempty"`   // Nil if not yet synced to ADO
 	ADOType     string   `yaml:"ado_type,omitempty"` // e.g., "Story", "Technical Story", "Bug"
 	StoryPoints *float64 `yaml:"story_points,omitempty"` // Mapped to ADO Story Points
+	Swimlane    string   `yaml:"swimlane,omitempty"`
 
 	// Recurring Tasks
 	Recurrence string `yaml:"recurrence,omitempty"` // e.g., "daily", "weekly", "monthly"
