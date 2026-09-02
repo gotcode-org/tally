@@ -6,6 +6,7 @@ package core
 
 import (
 	"fmt"
+	"gotcode.org/tally/internal/config"
 	"strings"
 	"time"
 )
@@ -33,6 +34,10 @@ func (a *App) AddTask(title string, adoType string, tags []string, isBacklog boo
 		CreatedAt: now,
 		UpdatedAt: now,
 		ADOType:   adoType,
+	}
+	
+	if cfg, err := config.Load(); err == nil && cfg.ADO.DefaultSwimlane != "" {
+		task.Swimlane = cfg.ADO.DefaultSwimlane
 	}
 
 	// Default to 1 point if the type is a Story to satisfy strict ADO requirements

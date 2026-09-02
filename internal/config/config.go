@@ -23,6 +23,7 @@ type Config struct {
 		DefaultProject string `yaml:"default_project"`
 		DefaultArea    string `yaml:"default_area_path"`
 		SwimlaneField  string `yaml:"swimlane_field,omitempty"`
+		DefaultSwimlane  string `yaml:"default_swimlane,omitempty"`
 	} `yaml:"ado"`
 
 	SevenPace struct {
