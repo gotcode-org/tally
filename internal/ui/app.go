@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"time"
 	"gotcode.org/tally/internal/config"
 	"os"
 	"os/exec"
@@ -159,7 +160,56 @@ func (m *MainModel) reloadList() {
 		items = append([]*ListItem{templatesNode}, items...)
 	}
 
+	
+	// Calculate Time Stats
+	now := time.Now()
+	var daySec, weekSec, monthSec, yearSec int
+	
+	// Determine the start of the ISO week (Monday)
+	offset := int(time.Monday - now.Weekday())
+	if offset > 0 {
+		offset = -6
+	}
+	startOfWeek := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, offset)
+	
+	for _, t := range tasks {
+		// Calculate granular time logs
+		for _, log := range t.TimeLogs {
+			if log.Timestamp.Year() == now.Year() {
+				yearSec += log.Seconds
+				if log.Timestamp.Month() == now.Month() {
+					monthSec += log.Seconds
+					if log.Timestamp.Day() == now.Day() {
+						daySec += log.Seconds
+					}
+				}
+				if !log.Timestamp.Before(startOfWeek) {
+					weekSec += log.Seconds
+				}
+			}
+		}
+		// Also support legacy TotalSeconds if TimeLogs is empty
+		if len(t.TimeLogs) == 0 && t.TotalSeconds > 0 {
+			if t.CreatedAt.Year() == now.Year() {
+				yearSec += t.TotalSeconds
+				if t.CreatedAt.Month() == now.Month() {
+					monthSec += t.TotalSeconds
+					if t.CreatedAt.Day() == now.Day() {
+						daySec += t.TotalSeconds
+					}
+				}
+				if !t.CreatedAt.Before(startOfWeek) {
+					weekSec += t.TotalSeconds
+				}
+			}
+		}
+	}
+	
+	timeStatsStr := fmt.Sprintf(" TIME LOGGED - Day: %.1fh | Week: %.1fh | Month: %.1fh | Year: %.1fh ", 
+		float64(daySec)/3600.0, float64(weekSec)/3600.0, float64(monthSec)/3600.0, float64(yearSec)/3600.0)
+
 	m.list = NewListModel("TALLY DASHBOARD", items)
+	m.list.TimeStats = timeStatsStr
 	// Propagate dimensions if already set
 	if m.terminalWidth > 0 {
 		newM, _ := m.list.Update(tea.WindowSizeMsg{Width: m.terminalWidth, Height: m.terminalHeight})

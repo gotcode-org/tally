@@ -45,6 +45,7 @@ type FlatRow struct {
 
 type ListModel struct {
 	title          string
+	TimeStats      string
 	items          []*ListItem
 	cursor         int
 	terminalWidth  int
@@ -396,7 +397,13 @@ func (m ListModel) View() string {
 	headerRow := lipgloss.NewStyle().Background(ThemeMauve).Render(m.renderHeader(widths))
 	
 	helpStr := " ↑/↓: move • enter: expand • e: edit • n: new • a: add time • m: start (move) • x: delete • t: theme • esc: quit "
-	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(helpStr)
+	
+	footerContent := helpStr
+	if m.TimeStats != "" {
+		footerContent = m.TimeStats + "\n" + helpStr
+	}
+	
+	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(footerContent)
 	
 	finalContent := headerFull + "\n" + headerRow + "\n" + paddedList + "\n" + footer
 
