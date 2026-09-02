@@ -70,11 +70,6 @@ func (m *MainModel) reloadList() {
 			timeStr = fmt.Sprintf("%.1fh", hours)
 		}
 
-		// Exclude raw templates from the dashboard completely
-		if strings.HasPrefix(t.ID, "recur-") {
-			continue
-		}
-
 		titleStr := t.ID + " - " + t.Title
 		if t.Recurrence != "" {
 			titleStr = "↻ " + titleStr
@@ -94,10 +89,6 @@ func (m *MainModel) reloadList() {
 	// 3. Nest children into parents, and build a list of top-level nodes
 	var topLevelTasks []*core.Task
 	for _, t := range tasks {
-		if strings.HasPrefix(t.ID, "recur-") {
-			continue // skip templates
-		}
-		
 		if t.ParentID != "" {
 			// Find parent in the map
 			if parentNode, exists := itemMap[t.ParentID]; exists {
