@@ -325,7 +325,7 @@ func (m ListModel) View() string {
 
 		var progressCell string
 		if row.Item.TimeText != "" {
-			pColor := ThemeOverlay
+			pColor := ThemeSubtext // Muted but readable on Overlay background
 			if isCursor {
 				pColor = ThemeBase // Dark text on blue active row
 			}
