@@ -261,7 +261,7 @@ func (f *FormModel) View() string {
 				Padding(0, 1).
 				Render(padded)
 				
-			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Align(lipgloss.Center).Render(inner)
+			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).PaddingLeft(4).Align(lipgloss.Left).Render(inner)
 		case FieldTextArea:
 			taView := field.TextArea.View()
 			
@@ -274,7 +274,7 @@ func (f *FormModel) View() string {
 				Padding(0, 1).
 				Render(taView)
 				
-			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Align(lipgloss.Center).Render(inner)
+			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).PaddingLeft(4).Align(lipgloss.Left).Render(inner)
 		case FieldSelector, FieldBoolean:
 			statusStr := ""
 			for j, opt := range field.Options {
@@ -288,7 +288,7 @@ func (f *FormModel) View() string {
 					statusStr += lipgloss.NewStyle().Background(ThemeOverlay).Render(fmt.Sprintf(" %s %s ", prefix, opt))
 				}
 			}
-			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render(statusStr)
+			view = lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).PaddingLeft(4).Align(lipgloss.Left).Render(statusStr)
 		}
 
 		if lbl != "" {

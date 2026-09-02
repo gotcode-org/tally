@@ -106,8 +106,8 @@ func (m *MainModel) reloadList() {
 
 func (m *MainModel) buildCreateForm() {
 	f := NewForm("CREATE NEW TASK")
-	f.AddTextBox("title", "Title", "Enter task title...", "The name of the task")
-	f.AddSelector("type", "Type", []string{"Task", "Story", "Technical Story", "Bug"}, "Use left/right to select type")
+	f.AddTextBox("title", "Title", "Enter task title...", "")
+	f.AddSelector("type", "Type", []string{"Task", "Story", "Technical Story", "Bug"}, "")
 	
 	f.AddButton("CREATE", ThemeGreen, ThemeBase, func(form *FormModel) tea.Cmd {
 		return func() tea.Msg {
