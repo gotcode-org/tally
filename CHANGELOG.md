@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Fixed critical TUI transparency bugs where ANSI reset codes (`\x1b[0m`) emitted by Bubbletea text inputs and borders would shatter the UI background and expose the terminal's native background.
+- Resolved severe contrast issues when cycling themes (specifically in Nord) by dynamically checking the active row's state and inverting text highlights when necessary.
+- Decoupled column separators from dynamic row styling to ensure grid lines draw consistently down the screen.
+
 ### Added
+- Overhauled the Create Task screen into a clean, horizontally-centered floating dialog box.
+- Enclosed text input fields in the dialog inside heavily styled, inset rounded borders.
+- Re-aligned dialog form fields and removed redundant help text for a more professional layout.
+- Added dynamic bottom-padding to the Dashboard to maintain the UI grid structure all the way to the footer, even when empty.
+- Stripped bulky background badges from Type and Status columns in the list view to reduce visual noise.
 - Integrated generic Bubbletea Form/List framework into a fully functional `tally ui` dashboard.
 - Implemented `tally points` and automatic Story Point defaults to satisfy strict Azure DevOps state transition rules.
 - Upgraded the Sync Engine to dynamically parse Markdown `# Description` and `# Acceptance Criteria` headers into native ADO fields.
