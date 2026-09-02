@@ -16,6 +16,7 @@ type AppState int
 const (
 	StateDashboard AppState = iota
 	StateCreateTask
+	StateLogTime
 )
 
 type MainModel struct {
@@ -24,6 +25,7 @@ type MainModel struct {
 	list    ListModel
 	form    *FormModel
 	
+	selectedID     string
 	terminalWidth  int
 	terminalHeight int
 }
@@ -131,8 +133,34 @@ func (m *MainModel) buildCreateForm() {
 	m.form.Init()
 }
 
+func (m *MainModel) buildLogTimeForm(id string) {
+	f := NewForm("LOG TIME: " + id)
+	f.AddTextBox("time", "Time", "e.g., 5m, 1.5h", "")
+	
+	f.AddButton("LOG TIME", ThemeGreen, ThemeBase, func(form *FormModel) tea.Cmd {
+		return func() tea.Msg {
+			timeStr := form.GetString("time")
+			if timeStr != "" {
+				m.coreApp.LogTime(id, timeStr)
+			}
+			return FormSubmitMsg{}
+		}
+	})
+	
+	f.AddButton("CANCEL", ThemeRed, ThemeBase, func(form *FormModel) tea.Cmd {
+		return func() tea.Msg { return FormCancelMsg{} }
+	})
+	
+	m.form = f
+	if m.terminalWidth > 0 {
+		m.form.Update(tea.WindowSizeMsg{Width: m.terminalWidth, Height: m.terminalHeight})
+	}
+	m.form.Init()
+}
+
 type FormSubmitMsg struct{}
 type FormCancelMsg struct{}
+type LogTimeMsg struct{ ID string }
 
 func (m *MainModel) Init() tea.Cmd {
 	return m.list.Init()
@@ -198,6 +226,12 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.buildCreateForm()
 		return m, nil
 		
+	case LogTimeMsg:
+		m.state = StateLogTime
+		m.selectedID = msg.ID
+		m.buildLogTimeForm(msg.ID)
+		return m, nil
+		
 	case FormSubmitMsg, FormCancelMsg:
 		m.state = StateDashboard
 		m.form = nil
@@ -220,7 +254,7 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *MainModel) View() string {
-	if m.state == StateCreateTask && m.form != nil {
+	if (m.state == StateCreateTask || m.state == StateLogTime) && m.form != nil {
 		return m.form.View()
 	}
 	return m.list.View()

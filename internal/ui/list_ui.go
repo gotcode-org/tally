@@ -112,6 +112,14 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, func() tea.Msg { return EditTaskMsg{ID: row.Item.ID} }
 				}
 			}
+		case "a":
+			flatRows := m.getFlatRows()
+			if len(flatRows) > 0 {
+				row := flatRows[m.cursor]
+				if row.Item.ID != "" {
+					return m, func() tea.Msg { return LogTimeMsg{ID: row.Item.ID} }
+				}
+			}
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
