@@ -251,14 +251,15 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 						fmt.Printf("  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
 					} else {
 						fmt.Printf("  -> Successfully updated ADO Work Item #%d\n", *t.ADOID)
-						// Dump the payload we sent and the ADO response for debugging
-						fmt.Printf("     [DEBUG] Sent Payload: %s\n", string(payload))
-						// Only print the first 200 chars of response so we don't flood the terminal
-						respStr := string(body)
-						if len(respStr) > 500 {
-							respStr = respStr[:500] + "..."
+						// Dump the payload we sent and the ADO response if debugging is enabled
+						if cfg.ADO.Debug {
+							fmt.Printf("     [DEBUG] Sent Payload: %s\n", string(payload))
+							respStr := string(body)
+							if len(respStr) > 500 {
+								respStr = respStr[:500] + "..."
+							}
+							fmt.Printf("     [DEBUG] ADO Response: %s\n", respStr)
 						}
-						fmt.Printf("     [DEBUG] ADO Response: %s\n", respStr)
 					}
 					resp.Body.Close()
 				}
