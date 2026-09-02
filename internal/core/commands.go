@@ -6,6 +6,7 @@ package core
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -19,6 +20,8 @@ func (a *App) AddTask(title string, adoType string, tags []string) (*Task, error
 		return nil, fmt.Errorf("failed to generate task ID: %w", err)
 	}
 
+	var defaultPoints float64 = 1.0
+
 	// 2. Construct the Domain Model
 	task := &Task{
 		ID:        id,
@@ -28,6 +31,11 @@ func (a *App) AddTask(title string, adoType string, tags []string) (*Task, error
 		CreatedAt: now,
 		UpdatedAt: now,
 		ADOType:   adoType,
+	}
+
+	// Default to 1 point if the type is a Story to satisfy strict ADO requirements
+	if strings.Contains(strings.ToLower(adoType), "story") {
+		task.StoryPoints = &defaultPoints
 	}
 
 	// 3. Save it via the Storage Engine
