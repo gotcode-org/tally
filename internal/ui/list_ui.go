@@ -181,10 +181,10 @@ func formatStatusCell(status string, width int, isCursor bool) string {
 		fg = ThemeBase
 	case "BACKLOG", "Todo":
 		bg = ThemeOverlay
-		fg = ThemeBase
+		fg = ThemeText // White text on dark grey overlay
 	default:
 		bg = ThemeOverlay
-		fg = ThemeBase
+		fg = ThemeText
 	}
 
 	badge := lipgloss.NewStyle().Foreground(fg).Background(bg).Bold(true).Padding(0, 1).Render(status)
