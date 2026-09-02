@@ -11,11 +11,11 @@ import (
 )
 
 // AddTask contains the pure business logic for creating a new task.
-func (a *App) AddTask(title string, adoType string, tags []string, isBacklog bool) (*Task, error) {
+func (a *App) AddTask(title string, adoType string, tags []string, isBacklog bool, recurrence string) (*Task, error) {
 	now := time.Now()
 
 	// 1. Generate the sequential local ID
-	id, err := a.Store.GetNextID(now, isBacklog)
+	id, err := a.Store.GetNextID(now, isBacklog, recurrence != "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate task ID: %w", err)
 	}
@@ -28,6 +28,7 @@ func (a *App) AddTask(title string, adoType string, tags []string, isBacklog boo
 		Title:     title,
 		Status:    StateOpen,
 		Tags:      tags,
+		Recurrence: recurrence,
 		CreatedAt: now,
 		UpdatedAt: now,
 		ADOType:   adoType,
@@ -123,7 +124,7 @@ func (a *App) StartTask(id string) error {
 
 	// Generate new ID for today
 	now := time.Now()
-	newID, err := a.Store.GetNextID(now, false)
+	newID, err := a.Store.GetNextID(now, false, false)
 	if err != nil {
 		// Try to recover by saving to old path?
 		return fmt.Errorf("failed to generate new ID: %w", err)
@@ -141,5 +142,59 @@ func (a *App) StartTask(id string) error {
 	// Also need to move the physical markdown body content since Save only writes frontmatter right now?
 	// Wait, does Save() write the body?
 	// Let's check how Save is implemented!
+	return nil
+}
+
+
+// ReconcileRecurringTasks scans the recurring folder and clones any missing tasks into today's list.
+func (a *App) ReconcileRecurringTasks() error {
+	tasks, err := a.Store.ListTasks("")
+	if err != nil {
+		return err
+	}
+
+	// 1. Separate templates from today's tasks
+	var templates []*Task
+	todayTitles := make(map[string]bool)
+	now := time.Now()
+	
+	todayPrefix := fmt.Sprintf("%s%s%s", now.Format("2006"), now.Format("01"), now.Format("02"))
+
+	for _, t := range tasks {
+		if strings.HasPrefix(t.ID, "recur-") {
+			templates = append(templates, t)
+		} else if strings.HasPrefix(t.ID, todayPrefix) {
+			todayTitles[t.Title] = true
+		}
+	}
+
+	// 2. Clone any missing templates
+	for _, template := range templates {
+		if !todayTitles[template.Title] {
+			// It's missing today! Clone it.
+			newID, err := a.Store.GetNextID(now, false, false)
+			if err != nil {
+				continue
+			}
+
+			newTask := &Task{
+				ID:          newID,
+				Title:       template.Title,
+				Status:      StateOpen,
+				Tags:        template.Tags,
+				CreatedAt:   now,
+				UpdatedAt:   now,
+				ADOType:     template.ADOType,
+				StoryPoints: template.StoryPoints,
+				Recurrence:  template.Recurrence, // Keep the tag so UI can draw the icon
+				TemplateID:  template.ID,
+				Body:        template.Body,
+			}
+			
+			a.Store.Save(newTask)
+			todayTitles[template.Title] = true // prevent duplicate cloning if there are multiple same-titled templates
+		}
+	}
+
 	return nil
 }

@@ -65,9 +65,19 @@ func (m *MainModel) reloadList() {
 			timeStr = fmt.Sprintf("%.1fh", hours)
 		}
 
+		// Exclude raw templates from the dashboard completely (they spawn invisible clones)
+		if strings.HasPrefix(t.ID, "recur-") {
+			continue
+		}
+
+		titleStr := t.ID + " - " + t.Title
+		if t.Recurrence != "" {
+			titleStr = "↻ " + titleStr
+		}
+
 		taskItem := &ListItem{
 			ID:        t.ID,
-			Title:     t.ID + " - " + t.Title,
+			Title:     titleStr,
 			Type:      t.ADOType,
 			Status:    string(t.Status),
 			TimeText:  timeStr,
@@ -126,13 +136,14 @@ func (m *MainModel) buildCreateForm() {
 	f.AddTextBox("title", "Title", "Enter task title...", "")
 	f.AddSelector("type", "Type", []string{"Task", "Story", "Technical Story", "Bug"}, "")
 	f.AddBoolean("backlog", "Backlog?", "")
+	f.AddSelector("recur", "Recurrence", []string{"", "daily", "weekly", "monthly"}, "")
 	
 	f.AddButton("CREATE", ThemeGreen, ThemeBase, func(form *FormModel) tea.Cmd {
 		return func() tea.Msg {
 			title := form.GetString("title")
 			adoType := form.GetString("type")
 			if title != "" {
-				m.coreApp.AddTask(title, adoType, []string{}, form.GetString("backlog") == "True")
+				m.coreApp.AddTask(title, adoType, []string{}, form.GetString("backlog") == "True", form.GetString("recur"))
 			}
 			return FormSubmitMsg{}
 		}
@@ -221,6 +232,7 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 		
 	case SyncFinishedMsg:
+		m.coreApp.ReconcileRecurringTasks()
 		m.reloadList() // Pull fresh data in case sync updated anything locally
 		return m, nil
 

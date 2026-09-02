@@ -47,6 +47,10 @@ type Task struct {
 	ADOType     string   `yaml:"ado_type,omitempty"` // e.g., "Story", "Technical Story", "Bug"
 	StoryPoints *float64 `yaml:"story_points,omitempty"` // Mapped to ADO Story Points
 
+	// Recurring Tasks
+	Recurrence string `yaml:"recurrence,omitempty"` // e.g., "daily", "weekly", "monthly"
+	TemplateID string `yaml:"template_id,omitempty"` // ID of the template this was cloned from
+
 	// Time Tracking State
 	TotalSeconds  int        `yaml:"total_seconds"`          // Total time tracked locally
 	SyncedSeconds int        `yaml:"synced_seconds"`         // Time successfully pushed to 7pace
