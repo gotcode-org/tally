@@ -48,6 +48,7 @@ type ListModel struct {
 	TimeStats      string
 	items          []*ListItem
 	cursor         int
+	offset         int
 	terminalWidth  int
 	terminalHeight int
 	widthPct       float64
@@ -266,16 +267,74 @@ func getRowTitle(row FlatRow) string {
 	return indent + icon + row.Item.Title
 }
 
-func renderRow(title, typeStr, statusCell, progress string, widths []int, isCursor bool, rowStyle lipgloss.Style) string {
-	formatColLeftRaw := func(txt string, w int) string {
-		// Because txt has NO ANSI escapes, we can safely slice it
-		// (Converting to runes prevents breaking multi-byte characters)
+func renderRow(title, typeStr, statusCell, progress string, widths []int, isCursor bool, rowStyle lipgloss.Style) []string {
+	formatColLeftRaw := func(txt string, w int) []string {
 		runes := []rune(txt)
-		if len(runes) > w {
-			return rowStyle.Render(string(runes[:w-3]) + "...")
+		if len(runes) <= w {
+			spaces := strings.Repeat(" ", w-len(runes))
+			return []string{rowStyle.Render(txt + spaces)}
 		}
-		spaces := strings.Repeat(" ", w-len(runes))
-		return rowStyle.Render(txt + spaces)
+		
+		var lines []string
+		indentStr := ""
+		dashIndex := strings.Index(txt, " - ")
+		if dashIndex != -1 {
+			indentLen := lipgloss.Width(txt[:dashIndex+3])
+			indentStr = strings.Repeat(" ", indentLen)
+		} else {
+			indentStr = "    "
+		}
+		
+		firstLineMax := w
+		subsequentLineMax := w - len(indentStr)
+		if subsequentLineMax < 10 {
+			return []string{rowStyle.Render(string(runes[:w-3]) + "...")}
+		}
+
+		// Helper to find word break
+		findBreak := func(r []rune, max int) int {
+			if len(r) <= max {
+				return len(r)
+			}
+			// Look for space from right to left
+			for i := max; i >= 0; i-- {
+				if r[i] == ' ' {
+					return i
+				}
+			}
+			// If no space found, hard break
+			return max
+		}
+
+		// First line
+		breakIdx := findBreak(runes, firstLineMax)
+		chunk := string(runes[:breakIdx])
+		pad := w - lipgloss.Width(chunk)
+		if pad < 0 { pad = 0 }
+		lines = append(lines, rowStyle.Render(chunk + strings.Repeat(" ", pad)))
+		
+		if breakIdx < len(runes) && runes[breakIdx] == ' ' {
+			runes = runes[breakIdx+1:]
+		} else {
+			runes = runes[breakIdx:]
+		}
+		
+		// Subsequent lines
+		for len(runes) > 0 {
+			breakIdx := findBreak(runes, subsequentLineMax)
+			chunk := string(runes[:breakIdx])
+			pad := subsequentLineMax - lipgloss.Width(chunk)
+			if pad < 0 { pad = 0 }
+			lines = append(lines, rowStyle.Render(indentStr + chunk + strings.Repeat(" ", pad)))
+			
+			if breakIdx < len(runes) && runes[breakIdx] == ' ' {
+				runes = runes[breakIdx+1:]
+			} else {
+				runes = runes[breakIdx:]
+			}
+		}
+		
+		return lines
 	}
 	
 	formatColLeftANSI := func(txt string, w int) string {
@@ -305,7 +364,7 @@ func renderRow(title, typeStr, statusCell, progress string, widths []int, isCurs
 		rowStyle = ActiveRowStyle
 	}
 
-	c1 := formatColLeftRaw(title, widths[0])
+	c1Lines := formatColLeftRaw(title, widths[0])
 	c2 := formatColCenter(typeStr, widths[1])
 	c3 := formatColCenter(statusCell, widths[2])
 	c4 := formatColLeftANSI(progress, widths[3])
@@ -315,9 +374,26 @@ func renderRow(title, typeStr, statusCell, progress string, widths []int, isCurs
 		prefix = lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeBlue).Bold(true).Render("▶ ")
 	}
 	prefix = rowStyle.Render(prefix)
+	
+	emptyPrefix := rowStyle.Render("  ")
 	separator := lipgloss.NewStyle().Foreground(ThemeSubtext).Background(rowStyle.GetBackground()).Render(" │ ")
+	emptySeparator := lipgloss.NewStyle().Foreground(ThemeSubtext).Background(rowStyle.GetBackground()).Render(" │ ")
 
-	return prefix + c1 + separator + c2 + separator + c3 + separator + c4
+	var result []string
+	
+	firstLine := prefix + c1Lines[0] + separator + c2 + separator + c3 + separator + c4
+	result = append(result, firstLine)
+	
+	c2Empty := formatColCenter("", widths[1])
+	c3Empty := formatColCenter("", widths[2])
+	c4Empty := formatColLeftANSI("", widths[3])
+	
+	for i := 1; i < len(c1Lines); i++ {
+		line := emptyPrefix + c1Lines[i] + emptySeparator + c2Empty + emptySeparator + c3Empty + emptySeparator + c4Empty
+		result = append(result, line)
+	}
+
+	return result
 }
 
 func (m ListModel) View() string {
@@ -348,10 +424,19 @@ func (m ListModel) View() string {
 	widths := []int{w0, w1, w2, w3}
 
 	flatRows := m.getFlatRows()
-	var listSections []string
-
+	var allLines []string
+	
+	visibleRows := targetHeight - 8
+	
+	// Windowing logic: we need to figure out which lines to show based on the cursor
+	cursorStartLine := 0
+	
 	for i, row := range flatRows {
 		isCursor := i == m.cursor
+		
+		if isCursor {
+			cursorStartLine = len(allLines)
+		}
 		
 		titleCell := getRowTitle(row)
 		
@@ -387,12 +472,29 @@ func (m ListModel) View() string {
 			progressCell = "-"
 		}
 
-		listSections = append(listSections, renderRow(titleCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle))
+		allLines = append(allLines, renderRow(titleCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle)...)
 	}
 
-	visibleRows := targetHeight - 8
+	// Calculate scroll offset
+	if cursorStartLine < m.offset {
+		m.offset = cursorStartLine
+	} else if cursorStartLine >= m.offset + visibleRows {
+		m.offset = cursorStartLine - visibleRows + 1
+	}
+
+	var listSections []string
+	if len(allLines) > 0 {
+		end := m.offset + visibleRows
+		if end > len(allLines) {
+			end = len(allLines)
+		}
+		if m.offset < len(allLines) {
+			listSections = allLines[m.offset:end]
+		}
+	}
+
 	for len(listSections) < visibleRows {
-		listSections = append(listSections, renderRow("", "", "", "", widths, false, lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeOverlay)))
+		listSections = append(listSections, renderRow("", "", "", "", widths, false, lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeOverlay))[0])
 	}
 
 	paddedList := lipgloss.NewStyle().
