@@ -17,8 +17,11 @@ var (
 )
 
 type CreateNewTaskMsg struct{}
+type EditTaskMsg struct{ ID string }
+type EditorFinishedMsg struct{ Err error }
 
 type ListItem struct {
+	ID           string
 	Title        string
 	Type         string
 	Status       string
@@ -94,6 +97,14 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "n":
 			return m, func() tea.Msg { return CreateNewTaskMsg{} }
+		case "e":
+			flatRows := m.getFlatRows()
+			if len(flatRows) > 0 {
+				row := flatRows[m.cursor]
+				if row.Item.ID != "" {
+					return m, func() tea.Msg { return EditTaskMsg{ID: row.Item.ID} }
+				}
+			}
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
@@ -327,7 +338,7 @@ func (m ListModel) View() string {
 	headerFull := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(" " + strings.ToUpper(m.title) + cursorIndicator + " ")
 	headerRow := lipgloss.NewStyle().Background(CatMochaMauve).Render(m.renderHeader(widths))
 	
-	helpStr := " ↑/↓: move • enter: expand/collapse • n: new task • esc: quit "
+	helpStr := " ↑/↓: move • enter: expand • e: edit • n: new task • esc: quit "
 	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(helpStr)
 	
 	finalContent := headerFull + "\n" + headerRow + "\n" + paddedList + "\n" + footer

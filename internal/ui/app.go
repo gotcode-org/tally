@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -82,6 +84,7 @@ func (m *MainModel) reloadList() {
 		}
 
 		taskItem := &ListItem{
+			ID:        t.ID,
 			Title:     t.ID + " - " + t.Title,
 			Type:      t.ADOType,
 			Status:    string(t.Status),
@@ -147,6 +150,21 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 		
+	case EditTaskMsg:
+		editor := os.Getenv("EDITOR")
+		if editor == "" {
+			editor = "vim"
+		}
+		path := m.coreApp.Store.GetTaskPath(msg.ID)
+		c := exec.Command(editor, path)
+		return m, tea.ExecProcess(c, func(err error) tea.Msg {
+			return EditorFinishedMsg{Err: err}
+		})
+		
+	case EditorFinishedMsg:
+		m.reloadList() // reload data after editor closes
+		return m, nil
+
 	case CreateNewTaskMsg:
 		m.state = StateCreateTask
 		m.buildCreateForm()

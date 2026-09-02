@@ -28,6 +28,7 @@ type TaskStore interface {
 	Parse(path string) (*Task, error)
 	GetNextID(date time.Time) (string, error)
 	ListTasks(datePrefix string) ([]*Task, error)
+	GetTaskPath(id string) string
 }
 
 // App acts as the CQRS orchestrator containing all business logic.
