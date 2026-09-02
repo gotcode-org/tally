@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Decoupled column separators from dynamic row styling to ensure grid lines draw consistently down the screen.
 
 ### Added
+- Implemented full Task Deletion support with a new `tally delete [id]` CLI command and an `x` keybinding in the TUI.
+- Integrated a new interactive `Log Time` dialog directly into the TUI (via the `a` keybinding) to rapidly log time without exiting the dashboard.
 - Overhauled the Create Task screen into a clean, horizontally-centered floating dialog box.
 - Enclosed text input fields in the dialog inside heavily styled, inset rounded borders.
 - Re-aligned dialog form fields and removed redundant help text for a more professional layout.
