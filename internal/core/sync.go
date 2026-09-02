@@ -190,6 +190,8 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 					if resp.StatusCode >= 400 {
 						body, _ := io.ReadAll(resp.Body)
 						fmt.Printf("  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
+					} else {
+						fmt.Printf("  -> Successfully updated ADO Work Item #%d\n", *t.ADOID)
 					}
 					resp.Body.Close()
 				}
@@ -260,6 +262,7 @@ func parseMarkdownSections(body string) (description, acceptanceCriteria string)
 		trimmed := strings.TrimSpace(line)
 		lower := strings.ToLower(trimmed)
 		
+		// Skip headers
 		if strings.HasPrefix(lower, "# description") {
 			currentSection = "description"
 			continue
@@ -268,10 +271,16 @@ func parseMarkdownSections(body string) (description, acceptanceCriteria string)
 			continue
 		}
 		
+		// ADO WYSIWYG requires proper block elements, bare text with <br> is often swallowed
+		htmlLine := line
+		if htmlLine == "" {
+			htmlLine = "<br>"
+		}
+		
 		if currentSection == "description" {
-			descBuilder.WriteString(line + "<br>")
+			descBuilder.WriteString(fmt.Sprintf("<div>%s</div>", htmlLine))
 		} else if currentSection == "ac" {
-			acBuilder.WriteString(line + "<br>")
+			acBuilder.WriteString(fmt.Sprintf("<div>%s</div>", htmlLine))
 		}
 	}
 	
