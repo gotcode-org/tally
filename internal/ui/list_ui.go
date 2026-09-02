@@ -272,7 +272,7 @@ func renderRow(title, typeStr, statusCell, progress string, widths []int, isCurs
 		prefix = lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeBlue).Bold(true).Render("▶ ")
 	}
 	prefix = rowStyle.Render(prefix)
-	separator := rowStyle.Render(" │ ")
+	separator := lipgloss.NewStyle().Foreground(ThemeSubtext).Background(rowStyle.GetBackground()).Render(" │ ")
 
 	return prefix + c1 + separator + c2 + separator + c3 + separator + c4
 }
