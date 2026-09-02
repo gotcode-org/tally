@@ -471,9 +471,9 @@ func (m ListModel) View() string {
 			if isCursor {
 				pColor = ThemeBase // Dark text on blue active row
 			}
-			progressCell = lipgloss.NewStyle().Foreground(pColor).Render(row.Item.TimeText)
+			progressCell = lipgloss.NewStyle().Foreground(pColor).Background(bgStyle.GetBackground()).Render(row.Item.TimeText)
 		} else {
-			progressCell = "-"
+			progressCell = lipgloss.NewStyle().Foreground(ThemeSubtext).Background(bgStyle.GetBackground()).Render("-")
 		}
 
 		allLines = append(allLines, renderRow(titleCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle)...)
