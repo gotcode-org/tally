@@ -36,36 +36,62 @@ func NewMainModel(app *core.App) *MainModel {
 
 func (m *MainModel) reloadList() {
 	tasks, _ := m.coreApp.Store.ListTasks("")
+
+	// Reverse tasks so newest are at the top
+	for i, j := 0, len(tasks)-1; i < j; i, j = i+1, j-1 {
+		tasks[i], tasks[j] = tasks[j], tasks[i]
+	}
+
 	var items []*ListItem
+	var lastYear, lastMonth, lastDay *ListItem
 	
 	for _, t := range tasks {
+		yStr := t.CreatedAt.Format("2006")
+		mStr := t.CreatedAt.Format("January")
+		dStr := t.CreatedAt.Format("02 (Mon)")
+		
+		if lastYear == nil || lastYear.Title != yStr {
+			lastYear = &ListItem{Title: yStr, Expanded: true}
+			items = append(items, lastYear)
+			lastMonth = nil // Reset month and day
+			lastDay = nil
+		}
+		
+		if lastMonth == nil || lastMonth.Title != mStr {
+			lastMonth = &ListItem{Title: mStr, Expanded: true}
+			lastYear.Children = append(lastYear.Children, lastMonth)
+			lastDay = nil
+		}
+		
+		if lastDay == nil || lastDay.Title != dStr {
+			lastDay = &ListItem{Title: dStr, Expanded: true}
+			lastMonth.Children = append(lastMonth.Children, lastDay)
+		}
+
 		c := CatMochaBlue
 		if strings.Contains(strings.ToLower(t.ADOType), "story") {
 			c = CatMochaMauve
 		} else if strings.Contains(strings.ToLower(t.ADOType), "bug") {
 			c = CatMochaRed
 		}
-		
+
 		timeStr := ""
 		if t.TotalSeconds > 0 {
 			hours := float64(t.TotalSeconds) / 3600.0
 			timeStr = fmt.Sprintf("%.1fh", hours)
 		}
 
-		items = append(items, &ListItem{
+		taskItem := &ListItem{
 			Title:     t.ID + " - " + t.Title,
 			Type:      t.ADOType,
 			Status:    string(t.Status),
 			TimeText:  timeStr,
 			TypeColor: c,
-		})
+		}
+		
+		lastDay.Children = append(lastDay.Children, taskItem)
 	}
-	
-	// Reverse the list so newest are at the top
-	for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
-		items[i], items[j] = items[j], items[i]
-	}
-	
+
 	m.list = NewListModel("TALLY DASHBOARD", items)
 	// Propagate dimensions if already set
 	if m.terminalWidth > 0 {
