@@ -146,7 +146,7 @@ func (m *MainModel) buildCreateForm() {
 	f.AddSelector("type", "Type", []string{"Task", "Story", "Technical Story", "Bug"}, "")
 	f.AddTextBox("tags", "Tags", "comma separated (e.g. urgent, backend)", "")
 	f.AddBoolean("backlog", "Backlog?", "")
-	f.AddSelector("recur", "Recurrence", []string{"", "daily", "weekly", "monthly"}, "")
+	f.AddSelector("recur", "Recurrence", []string{"", "daily", "weekdays", "weekly", "monthly"}, "")
 	
 	f.AddButton("CREATE", ThemeGreen, ThemeBase, func(form *FormModel) tea.Cmd {
 		return func() tea.Msg {

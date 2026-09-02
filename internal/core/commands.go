@@ -160,25 +160,77 @@ func (a *App) ReconcileRecurringTasks() error {
 		return err
 	}
 
-	// 1. Separate templates from today's tasks
+	// 1. Separate templates from instantiated tasks
 	var templates []*Task
-	todayTitles := make(map[string]bool)
-	now := time.Now()
 	
-	todayPrefix := fmt.Sprintf("%s%s%s", now.Format("2006"), now.Format("01"), now.Format("02"))
+	spawnedToday := make(map[string]bool)
+	spawnedThisWeek := make(map[string]bool)
+	spawnedThisMonth := make(map[string]bool)
+	
+	now := time.Now()
+	currYear, currWeek := now.ISOWeek()
 
 	for _, t := range tasks {
 		if strings.HasPrefix(t.ID, "recur-") {
 			templates = append(templates, t)
-		} else if strings.HasPrefix(t.ID, todayPrefix) {
-			todayTitles[t.Title] = true
+			continue
+		}
+		
+		key := t.TemplateID
+		if key == "" {
+			key = t.Title // Fallback
+		}
+
+		// Check Today
+		if t.CreatedAt.Format("20060102") == now.Format("20060102") {
+			spawnedToday[key] = true
+		}
+		
+		// Check This Week
+		tYear, tWeek := t.CreatedAt.ISOWeek()
+		if tYear == currYear && tWeek == currWeek {
+			spawnedThisWeek[key] = true
+		}
+		
+		// Check This Month
+		if t.CreatedAt.Format("200601") == now.Format("200601") {
+			spawnedThisMonth[key] = true
 		}
 	}
 
-	// 2. Clone any missing templates
+	// 2. Clone any missing templates based on their specific recurrence rules
 	for _, template := range templates {
-		if !todayTitles[template.Title] {
-			// It's missing today! Clone it.
+		shouldSpawn := false
+		key := template.ID
+		fallbackKey := template.Title
+		
+		recurType := strings.ToLower(template.Recurrence)
+		if recurType == "" {
+			recurType = "daily" // Default fallback
+		}
+
+		switch recurType {
+		case "daily":
+			if !spawnedToday[key] && !spawnedToday[fallbackKey] {
+				shouldSpawn = true
+			}
+		case "weekdays":
+			if now.Weekday() != time.Saturday && now.Weekday() != time.Sunday {
+				if !spawnedToday[key] && !spawnedToday[fallbackKey] {
+					shouldSpawn = true
+				}
+			}
+		case "weekly":
+			if !spawnedThisWeek[key] && !spawnedThisWeek[fallbackKey] {
+				shouldSpawn = true
+			}
+		case "monthly":
+			if !spawnedThisMonth[key] && !spawnedThisMonth[fallbackKey] {
+				shouldSpawn = true
+			}
+		}
+
+		if shouldSpawn {
 			newID, err := a.Store.GetNextID(now, false, false)
 			if err != nil {
 				continue
@@ -199,7 +251,7 @@ func (a *App) ReconcileRecurringTasks() error {
 			}
 			
 			a.Store.Save(newTask)
-			todayTitles[template.Title] = true // prevent duplicate cloning if there are multiple same-titled templates
+			spawnedToday[fallbackKey] = true // prevent duplicate cloning if there are multiple same-titled templates
 		}
 	}
 
