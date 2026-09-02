@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-09-02
 ### Added
+- **ADO Swimlane Support**: Users can now push tasks directly into specific board lanes by setting `ado.swimlane_field` in their config and `swimlane` in their markdown frontmatter.
+- **Tally Debug CLI**: Introduced `tally debug [ado_id]` command to fetch and dump raw JSON payloads from the ADO REST API, specifically helping users hunt down their custom `WEF_*_Kanban.Lane` field names.
 - **ADO Hierarchies**: Full parent-child relationship support. Subtasks can be created directly from the TUI by highlighting a parent Story and pressing `c`.
 - **Dashboard Nesting**: Subtasks visually render indented underneath their parent Story on the TUI dashboard tree.
 - **Granular Time Logging**: Core engine upgraded to store discrete `TimeLog` entries instead of a single merged integer, allowing independent syncing of time entries to 7pace with dynamic Activity IDs.
@@ -45,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **System.LinkTypes.Hierarchy-Reverse Patching**: The ADO sync engine dynamically links child tasks to parent stories in the ADO database during sync sweeps.
 
 ### Fixed
+- **ADO Update Payload Drops**: Swimlanes, Tags, and Story Points are now properly injected into the ADO JSON patch payload during *updates* (previously they only triggered on task creation).
 - **ADO WYSIWYG Editor Swallowing**: Markdown body output is now wrapped in explicit HTML `<div>` elements during ADO syncs to prevent Azure DevOps from silently dropping bare text strings in rich text fields.
 - **Recurrence Scheduling Rules**: Overhauled the Reconciliation engine to properly evaluate ISO weeks and calendar boundaries for `weekly`, `monthly`, and `weekdays` rules instead of cloning everything daily.
 - **Ghost Spawns**: Forced the Reconciliation Engine to fire instantly upon form submission so newly created templates spawn clones immediately without requiring an app restart.
