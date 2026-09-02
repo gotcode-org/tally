@@ -66,9 +66,9 @@ func (f *FormModel) AddTextBox(name, label, placeholder, help string) {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
 	ti.Prompt = "  "
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(CatMochaBlue)
-	ti.TextStyle = lipgloss.NewStyle().Foreground(CatMochaText)
-	ti.Cursor.Style = lipgloss.NewStyle().Foreground(CatMochaMauve)
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(ThemeBlue)
+	ti.TextStyle = lipgloss.NewStyle().Foreground(ThemeText)
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(ThemeMauve)
 	f.Fields = append(f.Fields, &Field{Type: FieldText, Name: name, Label: label, Help: help, TextInput: ti})
 }
 
@@ -78,9 +78,9 @@ func (f *FormModel) AddTextArea(name, label, placeholder, help string) {
 	ta.ShowLineNumbers = false
 	ta.SetHeight(3)
 	ta.Prompt = "  "
-	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(CatMochaText)
-	ta.Cursor.Style = lipgloss.NewStyle().Foreground(CatMochaMauve)
-	ta.BlurredStyle.Base = lipgloss.NewStyle().Foreground(CatMochaSubtext)
+	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(ThemeText)
+	ta.Cursor.Style = lipgloss.NewStyle().Foreground(ThemeMauve)
+	ta.BlurredStyle.Base = lipgloss.NewStyle().Foreground(ThemeSubtext)
 	f.Fields = append(f.Fields, &Field{Type: FieldTextArea, Name: name, Label: label, Help: help, TextArea: ta})
 }
 
@@ -210,7 +210,7 @@ func (f *FormModel) View() string {
 	}
 
 	var sections []string
-	headerFull := lipgloss.NewStyle().Width(f.Width).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(" " + strings.ToUpper(f.Title) + " ")
+	headerFull := lipgloss.NewStyle().Width(f.Width).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" " + strings.ToUpper(f.Title) + " ")
 	sections = append(sections, headerFull)
 
 	contentWidth := f.Width - 4
@@ -233,9 +233,9 @@ func (f *FormModel) View() string {
 
 		var lbl string
 		if focused {
-			lbl = lipgloss.NewStyle().Foreground(CatMochaGreen).Bold(true).Render("▶ " + field.Label)
+			lbl = lipgloss.NewStyle().Foreground(ThemeGreen).Bold(true).Render("▶ " + field.Label)
 		} else {
-			lbl = lipgloss.NewStyle().Foreground(CatMochaText).Bold(true).Render("  " + field.Label)
+			lbl = lipgloss.NewStyle().Foreground(ThemeText).Bold(true).Render("  " + field.Label)
 		}
 
 		var view string
@@ -252,7 +252,7 @@ func (f *FormModel) View() string {
 					prefix = "⊙"
 				}
 				if focused && j == field.Selected {
-					statusStr += lipgloss.NewStyle().Foreground(CatMochaBase).Background(CatMochaGreen).Bold(true).Render(fmt.Sprintf(" %s %s ", prefix, opt))
+					statusStr += lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeGreen).Bold(true).Render(fmt.Sprintf(" %s %s ", prefix, opt))
 				} else {
 					statusStr += fmt.Sprintf(" %s %s ", prefix, opt)
 				}
@@ -267,7 +267,7 @@ func (f *FormModel) View() string {
 		sections = append(sections, view)
 		
 		if field.Help != "" {
-			sections = append(sections, lipgloss.NewStyle().Foreground(CatMochaOverlay).Italic(true).Render("    "+field.Help))
+			sections = append(sections, lipgloss.NewStyle().Foreground(ThemeOverlay).Italic(true).Render("    "+field.Help))
 		}
 		
 		sections = append(sections, "") // Spacing between fields
@@ -276,13 +276,13 @@ func (f *FormModel) View() string {
 	if len(buttonViews) > 0 {
 		buttonsStr := strings.Join(buttonViews, "   ")
 		// Align buttons to the center
-		sections = append(sections, lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Center).Background(CatMochaBase).Render(buttonsStr))
+		sections = append(sections, lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Center).Background(ThemeBase).Render(buttonsStr))
 	}
 
 	sections = append(sections, "") // Spacing before footer
 
 		helpText := " tab/shift+tab: move • ←/→: select • enter: submit • esc: quit "
-	footer := lipgloss.NewStyle().Width(f.Width).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(helpText)
+	footer := lipgloss.NewStyle().Width(f.Width).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(helpText)
 
 	// Combine body sections and force height so the footer is pushed exactly to the bottom
 	bodyContent := strings.Join(sections[1:], "\n")
@@ -290,6 +290,6 @@ func (f *FormModel) View() string {
 
 	formContent := sections[0] + "\n" + paddedBody + "\n" + footer
 	
-	win := lipgloss.NewStyle().Background(CatMochaBase).Width(f.Width).Height(f.Height).Render(formContent)
-	return lipgloss.Place(f.terminalWidth, f.terminalHeight, lipgloss.Center, lipgloss.Top, win, lipgloss.WithWhitespaceBackground(CatMochaBase))
+	win := lipgloss.NewStyle().Background(ThemeBase).Width(f.Width).Height(f.Height).Render(formContent)
+	return lipgloss.Place(f.terminalWidth, f.terminalHeight, lipgloss.Center, lipgloss.Top, win, lipgloss.WithWhitespaceBackground(ThemeBase))
 }

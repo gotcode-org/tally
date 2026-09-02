@@ -9,11 +9,11 @@ import (
 )
 
 var (
-	HeaderStyle = lipgloss.NewStyle().Foreground(CatMochaBase).Background(CatMochaMauve).Bold(true)
-	MilestoneRowStyle = lipgloss.NewStyle().Foreground(CatMochaText)
-	StoryRowStyle = lipgloss.NewStyle().Foreground(CatMochaText)
-	TaskRowStyle = lipgloss.NewStyle().Foreground(CatMochaOverlay)
-	ActiveRowStyle = lipgloss.NewStyle().Foreground(CatMochaText).Background(CatMochaOverlay).Bold(true)
+	HeaderStyle = lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeMauve).Bold(true)
+	MilestoneRowStyle = lipgloss.NewStyle().Foreground(ThemeText)
+	StoryRowStyle = lipgloss.NewStyle().Foreground(ThemeText)
+	TaskRowStyle = lipgloss.NewStyle().Foreground(ThemeOverlay)
+	ActiveRowStyle = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).Bold(true)
 )
 
 type CreateNewTaskMsg struct{}
@@ -138,20 +138,20 @@ func (m ListModel) renderHeader(widths []int) string {
 		if len(col) > w {
 			styled = HeaderStyle.Render(col[:w-3] + "...")
 		} else {
-			styled = HeaderStyle.Render(col) + lipgloss.NewStyle().Background(CatMochaMauve).Render(strings.Repeat(" ", w-len(col)))
+			styled = HeaderStyle.Render(col) + lipgloss.NewStyle().Background(ThemeMauve).Render(strings.Repeat(" ", w-len(col)))
 		}
 		cells = append(cells, styled)
 	}
 
-	prefix := lipgloss.NewStyle().Background(CatMochaMauve).Render("  ")
-	separator := lipgloss.NewStyle().Foreground(CatMochaBase).Background(CatMochaMauve).Render(" │ ")
+	prefix := lipgloss.NewStyle().Background(ThemeMauve).Render("  ")
+	separator := lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeMauve).Render(" │ ")
 	middle := prefix + strings.Join(cells, separator)
 
 	var parts []string
 	for _, w := range widths {
 		parts = append(parts, strings.Repeat("─", w))
 	}
-	borderStyle := lipgloss.NewStyle().Foreground(CatMochaBase).Background(CatMochaMauve)
+	borderStyle := lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeMauve)
 	
 	topBorder := borderStyle.Render("──" + strings.Join(parts, "─┬─"))
 	botBorder := borderStyle.Render("──" + strings.Join(parts, "─┼─"))
@@ -165,20 +165,20 @@ func formatStatusCell(status string, width int, isCursor bool) string {
 
 	switch status {
 	case "ACTIVE", "In Progress":
-		bg = CatMochaBlue
-		fg = CatMochaBase
+		bg = ThemeBlue
+		fg = ThemeBase
 	case "COMPLETED", "Done":
-		bg = CatMochaGreen
-		fg = CatMochaBase
+		bg = ThemeGreen
+		fg = ThemeBase
 	case "CANCELLED":
-		bg = CatMochaRed
-		fg = CatMochaBase
+		bg = ThemeRed
+		fg = ThemeBase
 	case "BACKLOG", "Todo":
-		bg = CatMochaOverlay
-		fg = CatMochaBase
+		bg = ThemeOverlay
+		fg = ThemeBase
 	default:
-		bg = CatMochaOverlay
-		fg = CatMochaBase
+		bg = ThemeOverlay
+		fg = ThemeBase
 	}
 
 	badge := lipgloss.NewStyle().Foreground(fg).Background(bg).Bold(true).Padding(0, 1).Render(status)
@@ -209,13 +209,13 @@ func renderProgressBar(pct float64, text string, width int) string {
 	filledLen := int(float64(width) * pct)
 	emptyLen := width - filledLen
 
-	filled := lipgloss.NewStyle().Foreground(CatMochaGreen).Render(strings.Repeat("█", filledLen))
-	empty := lipgloss.NewStyle().Foreground(CatMochaOverlay).Render(strings.Repeat("░", emptyLen))
+	filled := lipgloss.NewStyle().Foreground(ThemeGreen).Render(strings.Repeat("█", filledLen))
+	empty := lipgloss.NewStyle().Foreground(ThemeOverlay).Render(strings.Repeat("░", emptyLen))
 
 	bar := filled + empty
 	
 	if text != "" {
-		textStyle := lipgloss.NewStyle().Foreground(CatMochaOverlay).Italic(true)
+		textStyle := lipgloss.NewStyle().Foreground(ThemeOverlay).Italic(true)
 		return fmt.Sprintf("%s %s", bar, textStyle.Render(text))
 	}
 	return bar
@@ -264,7 +264,7 @@ func renderRow(title, typeStr, statusCell, progress string, widths []int, isCurs
 
 	prefix := "  "
 	if isCursor {
-		prefix = lipgloss.NewStyle().Foreground(CatMochaGreen).Bold(true).Render("▶ ")
+		prefix = lipgloss.NewStyle().Foreground(ThemeGreen).Bold(true).Render("▶ ")
 	}
 	prefix = rowStyle.Render(prefix)
 	separator := rowStyle.Render(" │ ")
@@ -312,14 +312,14 @@ func (m ListModel) View() string {
 			rowStyle = StoryRowStyle
 		}
 
-		badgeStyle := lipgloss.NewStyle().Foreground(CatMochaBase).Background(row.Item.TypeColor).Bold(true).Padding(0, 1)
+		badgeStyle := lipgloss.NewStyle().Foreground(ThemeBase).Background(row.Item.TypeColor).Bold(true).Padding(0, 1)
 		typeCell := badgeStyle.Width(widths[1]).Align(lipgloss.Center).Render(strings.ToUpper(row.Item.Type))
 		
 		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor)
 
 		var progressCell string
 		if row.Item.TimeText != "" {
-			progressCell = lipgloss.NewStyle().Foreground(CatMochaOverlay).Render(row.Item.TimeText)
+			progressCell = lipgloss.NewStyle().Foreground(ThemeOverlay).Render(row.Item.TimeText)
 		} else {
 			progressCell = "-"
 		}
@@ -327,10 +327,10 @@ func (m ListModel) View() string {
 		listSections = append(listSections, renderRow(titleCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle))
 	}
 
-	listSections = append(listSections, lipgloss.NewStyle().Background(CatMochaBase).Render(""))
+	listSections = append(listSections, lipgloss.NewStyle().Background(ThemeBase).Render(""))
 
 	paddedList := lipgloss.NewStyle().
-		Background(CatMochaBase).
+		Background(ThemeBase).
 		Width(headerWidth).
 		Height(targetHeight - 8).
 		Render(strings.Join(listSections, "\n"))
@@ -339,18 +339,18 @@ func (m ListModel) View() string {
 	if len(flatRows) > 0 {
 		cursorIndicator = fmt.Sprintf(" [%d/%d]", m.cursor+1, len(flatRows))
 	}
-	headerFull := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(" " + strings.ToUpper(m.title) + cursorIndicator + " ")
-	headerRow := lipgloss.NewStyle().Background(CatMochaMauve).Render(m.renderHeader(widths))
+	headerFull := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" " + strings.ToUpper(m.title) + cursorIndicator + " ")
+	headerRow := lipgloss.NewStyle().Background(ThemeMauve).Render(m.renderHeader(widths))
 	
 	helpStr := " ↑/↓: move • enter: expand • e: edit • n: new • s: sync • esc: quit "
-	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(helpStr)
+	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(helpStr)
 	
 	finalContent := headerFull + "\n" + headerRow + "\n" + paddedList + "\n" + footer
 
 	activeWindow := windowStyle.Copy().Width(targetWidth)
 	result := activeWindow.Render(finalContent)
 
-	return lipgloss.Place(m.terminalWidth, m.terminalHeight, lipgloss.Center, lipgloss.Top, result, lipgloss.WithWhitespaceBackground(CatMochaBase))
+	return lipgloss.Place(m.terminalWidth, m.terminalHeight, lipgloss.Center, lipgloss.Top, result, lipgloss.WithWhitespaceBackground(ThemeBase))
 }
 
 func RunList(title string, items []*ListItem) error {

@@ -70,11 +70,11 @@ func (m *MainModel) reloadList() {
 			lastMonth.Children = append(lastMonth.Children, lastDay)
 		}
 
-		c := CatMochaBlue
+		c := ThemeBlue
 		if strings.Contains(strings.ToLower(t.ADOType), "story") {
-			c = CatMochaMauve
+			c = ThemeMauve
 		} else if strings.Contains(strings.ToLower(t.ADOType), "bug") {
-			c = CatMochaRed
+			c = ThemeRed
 		}
 
 		timeStr := ""
@@ -108,7 +108,7 @@ func (m *MainModel) buildCreateForm() {
 	f.AddTextBox("title", "Title", "Enter task title...", "The name of the task")
 	f.AddSelector("type", "Type", []string{"Task", "Story", "Technical Story", "Bug"}, "Use left/right to select type")
 	
-	f.AddButton("CREATE", CatMochaGreen, CatMochaBase, func(form *FormModel) tea.Cmd {
+	f.AddButton("CREATE", ThemeGreen, ThemeBase, func(form *FormModel) tea.Cmd {
 		return func() tea.Msg {
 			title := form.GetString("title")
 			adoType := form.GetString("type")
@@ -119,7 +119,7 @@ func (m *MainModel) buildCreateForm() {
 		}
 	})
 	
-	f.AddButton("CANCEL", CatMochaRed, CatMochaBase, func(form *FormModel) tea.Cmd {
+	f.AddButton("CANCEL", ThemeRed, ThemeBase, func(form *FormModel) tea.Cmd {
 		return func() tea.Msg { return FormCancelMsg{} }
 	})
 	
