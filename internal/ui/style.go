@@ -167,10 +167,10 @@ func ApplyTheme(t ThemePalette) {
 		
 	// Refresh List UI globals too!
 	HeaderStyle = lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeMauve).Bold(true)
-	MilestoneRowStyle = lipgloss.NewStyle().Foreground(ThemeText)
-	StoryRowStyle = lipgloss.NewStyle().Foreground(ThemeText)
-	TaskRowStyle = lipgloss.NewStyle().Foreground(ThemeOverlay)
-	ActiveRowStyle = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).Bold(true)
+	MilestoneRowStyle = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay)
+	StoryRowStyle = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay)
+	TaskRowStyle = lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeOverlay) // Darker text for lowest tier tasks
+	ActiveRowStyle = lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeBlue).Bold(true) // Blue highlight for selected row
 }
 
 // Adjust dimensions based on terminal size

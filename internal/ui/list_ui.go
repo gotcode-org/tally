@@ -146,8 +146,8 @@ func (m ListModel) renderHeader(widths []int) string {
 		cells = append(cells, styled)
 	}
 
-	prefix := lipgloss.NewStyle().Background(ThemeMauve).Render("  ")
-	separator := lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeMauve).Render(" │ ")
+	prefix := lipgloss.NewStyle().Background(ThemeOverlay).Render("  ")
+	separator := lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeOverlay).Render(" │ ")
 	middle := prefix + strings.Join(cells, separator)
 
 	var parts []string
@@ -330,10 +330,10 @@ func (m ListModel) View() string {
 		listSections = append(listSections, renderRow(titleCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle))
 	}
 
-	listSections = append(listSections, lipgloss.NewStyle().Background(ThemeBase).Render(""))
+	listSections = append(listSections, lipgloss.NewStyle().Background(ThemeOverlay).Render(""))
 
 	paddedList := lipgloss.NewStyle().
-		Background(ThemeBase).
+		Background(ThemeOverlay).
 		Width(headerWidth).
 		Height(targetHeight - 8).
 		Render(strings.Join(listSections, "\n"))
