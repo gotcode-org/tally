@@ -327,7 +327,7 @@ func (m ListModel) View() string {
 	headerFull := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(" " + strings.ToUpper(m.title) + cursorIndicator + " ")
 	headerRow := lipgloss.NewStyle().Background(CatMochaMauve).Render(m.renderHeader(widths))
 	
-	helpStr := " tab/shift+tab: move • enter: toggle/edit • esc: quit "
+	helpStr := " ↑/↓: move • enter: expand/collapse • n: new task • esc: quit "
 	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(helpStr)
 	
 	finalContent := headerFull + "\n" + headerRow + "\n" + paddedList + "\n" + footer
