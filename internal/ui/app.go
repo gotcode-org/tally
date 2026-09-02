@@ -317,6 +317,7 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case FormSubmitMsg, FormCancelMsg:
 		m.state = StateDashboard
 		m.form = nil
+		m.coreApp.ReconcileRecurringTasks() // Force a spawn check in case they just created a template
 		m.reloadList() // Pull fresh data
 		return m, nil
 	}
