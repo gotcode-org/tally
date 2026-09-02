@@ -32,6 +32,11 @@ type MainModel struct {
 }
 
 func NewMainModel(app *core.App) *MainModel {
+	if cfg, err := config.Load(); err == nil {
+		if cfg.UI.Theme != "" {
+			ApplyThemeByName(cfg.UI.Theme)
+		}
+	}
 	m := &MainModel{
 		coreApp: app,
 		state:   StateDashboard,
