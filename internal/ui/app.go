@@ -244,7 +244,7 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newModel tea.Model
 		newModel, cmd = m.list.Update(msg)
 		m.list = newModel.(ListModel)
-	} else if m.state == StateCreateTask {
+	} else if m.state == StateCreateTask || m.state == StateLogTime {
 		var newModel tea.Model
 		newModel, cmd = m.form.Update(msg)
 		m.form = newModel.(*FormModel)
