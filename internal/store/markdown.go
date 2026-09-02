@@ -94,7 +94,7 @@ func (s *Store) Save(task *core.Task) error {
 	buf.WriteString("\n")
 
 	// Write atomically (or just standard write for now)
-	if err := os.WriteFile(path, buf.Bytes(), 0644); err != nil {
+	if err := os.WriteFile(path, buf.Bytes(), 0600); err != nil {
 		return fmt.Errorf("failed to write markdown file: %w", err)
 	}
 
