@@ -50,6 +50,7 @@ func (m *MainModel) reloadList() {
 
 	var items []*ListItem
 	var lastYear, lastMonth, lastDay *ListItem
+	var todayNode *ListItem
 	var backlogNode *ListItem
 	var templatesNode *ListItem
 	
@@ -127,6 +128,17 @@ func (m *MainModel) reloadList() {
 			continue
 		}
 
+		// Intercept Today's tasks
+		now := time.Now()
+		isToday := t.CreatedAt.Year() == now.Year() && t.CreatedAt.Month() == now.Month() && t.CreatedAt.Day() == now.Day()
+		if isToday {
+			if todayNode == nil {
+				todayNode = &ListItem{Title: "Today", Expanded: true}
+			}
+			todayNode.Children = append(todayNode.Children, taskItem)
+			continue
+		}
+
 		yStr := t.CreatedAt.Format("2006")
 		mStr := t.CreatedAt.Format("January")
 		dStr := t.CreatedAt.Format("02 (Mon)")
@@ -152,13 +164,25 @@ func (m *MainModel) reloadList() {
 		lastDay.Children = append(lastDay.Children, taskItem)
 	}
 
-	// Prepend our special folders to the top of the dashboard
+	// Build the final ordered list
+	var finalItems []*ListItem
+	
+	if todayNode != nil {
+		finalItems = append(finalItems, todayNode)
+	}
+	
+	// Append the historical Year/Month/Day tree
+	finalItems = append(finalItems, items...)
+	
 	if backlogNode != nil {
-		items = append([]*ListItem{backlogNode}, items...)
+		finalItems = append(finalItems, backlogNode)
 	}
+	
 	if templatesNode != nil {
-		items = append([]*ListItem{templatesNode}, items...)
+		finalItems = append(finalItems, templatesNode)
 	}
+	
+	items = finalItems
 
 	
 	// Calculate Time Stats
