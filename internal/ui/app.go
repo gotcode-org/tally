@@ -21,9 +21,10 @@ const (
 )
 
 type MainModel struct {
-	coreApp *core.App
-	state   AppState
-	list    ListModel
+	coreApp       *core.App
+	state         AppState
+	list          ListModel
+	expandedState map[string]bool
 	form    *FormModel
 	
 	selectedID     string
@@ -38,14 +39,32 @@ func NewMainModel(app *core.App) *MainModel {
 		}
 	}
 	m := &MainModel{
-		coreApp: app,
-		state:   StateDashboard,
+		coreApp:       app,
+		state:         StateDashboard,
+		expandedState: make(map[string]bool),
 	}
 	m.reloadList()
 	return m
 }
 
 func (m *MainModel) reloadList() {
+	// Capture current expansion state before wiping
+	if m.list.items != nil {
+		var captureState func(items []*ListItem)
+		captureState = func(items []*ListItem) {
+			for _, item := range items {
+				// Use ID if available, otherwise fallback to Title (for folders)
+				key := item.ID
+				if key == "" {
+					key = "folder:" + item.Title
+				}
+				m.expandedState[key] = item.Expanded
+				captureState(item.Children)
+			}
+		}
+		captureState(m.list.items)
+	}
+
 	tasks, _ := m.coreApp.Store.ListTasks("")
 
 	// Reverse tasks so newest are at the top
@@ -82,6 +101,11 @@ func (m *MainModel) reloadList() {
 			titleStr = "↻ " + titleStr
 		}
 
+		expanded := true
+		if val, exists := m.expandedState[t.ID]; exists {
+			expanded = val
+		}
+
 		itemMap[t.ID] = &ListItem{
 			ID:        t.ID,
 			Title:     titleStr,
@@ -89,7 +113,7 @@ func (m *MainModel) reloadList() {
 			Status:    string(t.Status),
 			TimeText:  timeStr,
 			TypeColor: c,
-			Expanded:  true, // keep children visible by default
+			Expanded:  expanded, // keep children visible by default or use captured state
 		}
 	}
 	
@@ -118,7 +142,9 @@ func (m *MainModel) reloadList() {
 		if strings.HasPrefix(t.ID, "recur-") {
 			if templatesNode == nil {
 				// Keep it collapsed by default so it doesn't clutter the UI
-				templatesNode = &ListItem{Title: "Templates", Expanded: false} 
+				expanded := false
+			if val, ok := m.expandedState["folder:Templates"]; ok { expanded = val }
+			templatesNode = &ListItem{Title: "Templates", Expanded: expanded} 
 			}
 			templatesNode.Children = append(templatesNode.Children, taskItem)
 			continue
@@ -127,7 +153,9 @@ func (m *MainModel) reloadList() {
 		// Intercept Backlog tasks so they skip chronological binning
 		if strings.HasPrefix(t.ID, "backlog-") {
 			if backlogNode == nil {
-				backlogNode = &ListItem{Title: "Backlog", Expanded: false}
+				expanded := false
+			if val, ok := m.expandedState["folder:Backlog"]; ok { expanded = val }
+			backlogNode = &ListItem{Title: "Backlog", Expanded: expanded}
 			}
 			backlogNode.Children = append(backlogNode.Children, taskItem)
 			continue
@@ -138,7 +166,9 @@ func (m *MainModel) reloadList() {
 		isToday := t.CreatedAt.Year() == now.Year() && t.CreatedAt.Month() == now.Month() && t.CreatedAt.Day() == now.Day()
 		if isToday {
 			if todayNode == nil {
-				todayNode = &ListItem{Title: "Today", Expanded: true}
+				expanded := true
+			if val, ok := m.expandedState["folder:Today"]; ok { expanded = val }
+			todayNode = &ListItem{Title: "Today", Expanded: expanded}
 			}
 			todayNode.Children = append(todayNode.Children, taskItem)
 			continue
@@ -149,20 +179,26 @@ func (m *MainModel) reloadList() {
 		dStr := t.CreatedAt.Format("02 (Mon)")
 		
 		if lastYear == nil || lastYear.Title != yStr {
-			lastYear = &ListItem{Title: yStr, Expanded: false}
+			expanded := false
+		if val, ok := m.expandedState["folder:"+yStr]; ok { expanded = val }
+		lastYear = &ListItem{Title: yStr, Expanded: expanded}
 			items = append(items, lastYear)
 			lastMonth = nil // Reset month and day
 			lastDay = nil
 		}
 		
 		if lastMonth == nil || lastMonth.Title != mStr {
-			lastMonth = &ListItem{Title: mStr, Expanded: false}
+			expanded := false
+		if val, ok := m.expandedState["folder:"+mStr]; ok { expanded = val }
+		lastMonth = &ListItem{Title: mStr, Expanded: expanded}
 			lastYear.Children = append(lastYear.Children, lastMonth)
 			lastDay = nil
 		}
 		
 		if lastDay == nil || lastDay.Title != dStr {
-			lastDay = &ListItem{Title: dStr, Expanded: false}
+			expanded := false
+		if val, ok := m.expandedState["folder:"+dStr]; ok { expanded = val }
+		lastDay = &ListItem{Title: dStr, Expanded: expanded}
 			lastMonth.Children = append(lastMonth.Children, lastDay)
 		}
 		
