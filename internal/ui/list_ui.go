@@ -162,32 +162,26 @@ func (m ListModel) renderHeader(widths []int) string {
 	return topBorder + "\n" + middle + "\n" + botBorder
 }
 
-func formatStatusCell(status string, width int, isCursor bool) string {
+func formatStatusCell(status string, width int, isCursor bool, bgStyle lipgloss.Style) string {
 	if status == "" {
 		return ""
 	}
-	var bg lipgloss.Color
 	var fg lipgloss.Color
 
 	switch status {
 	case "ACTIVE", "In Progress":
-		bg = ThemeBlue
-		fg = ThemeBase
+		fg = ThemeBlue
 	case "COMPLETED", "Done":
-		bg = ThemeGreen
-		fg = ThemeBase
+		fg = ThemeGreen
 	case "CANCELLED":
-		bg = ThemeRed
-		fg = ThemeBase
+		fg = ThemeRed
 	case "BACKLOG", "Todo":
-		bg = ThemeOverlay
-		fg = ThemeText // White text on dark grey overlay
+		fg = ThemeSubtext
 	default:
-		bg = ThemeOverlay
-		fg = ThemeText
+		fg = ThemeSubtext
 	}
 
-	badge := lipgloss.NewStyle().Foreground(fg).Background(bg).Bold(true).Padding(0, 1).Render(status)
+	badge := lipgloss.NewStyle().Foreground(fg).Background(bgStyle.GetBackground()).Bold(true).Render(strings.ToUpper(status))
 	visibleLen := lipgloss.Width(badge)
 
 	if visibleLen > width {
@@ -327,7 +321,7 @@ func (m ListModel) View() string {
 			typeCell = lipgloss.NewStyle().Foreground(row.Item.TypeColor).Background(bgStyle.GetBackground()).Bold(true).Render(strings.ToUpper(row.Item.Type))
 		}
 		
-		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor)
+		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor, bgStyle)
 
 		var progressCell string
 		if row.Item.TimeText != "" {
