@@ -353,7 +353,7 @@ func (m ListModel) View() string {
 	activeWindow := windowStyle.Copy().Width(targetWidth)
 	result := activeWindow.Render(finalContent)
 
-	return lipgloss.Place(m.terminalWidth, m.terminalHeight, lipgloss.Center, lipgloss.Top, result, lipgloss.WithWhitespaceBackground(ThemeBase))
+	return lipgloss.Place(m.terminalWidth, m.terminalHeight, lipgloss.Center, lipgloss.Top, result)
 }
 
 func RunList(title string, items []*ListItem) error {

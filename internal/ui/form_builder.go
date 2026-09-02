@@ -291,5 +291,5 @@ func (f *FormModel) View() string {
 	formContent := sections[0] + "\n" + paddedBody + "\n" + footer
 	
 	win := lipgloss.NewStyle().Background(ThemeBase).Width(f.Width).Height(f.Height).Render(formContent)
-	return lipgloss.Place(f.terminalWidth, f.terminalHeight, lipgloss.Center, lipgloss.Top, win, lipgloss.WithWhitespaceBackground(ThemeBase))
+	return lipgloss.Place(f.terminalWidth, f.terminalHeight, lipgloss.Center, lipgloss.Top, win)
 }
