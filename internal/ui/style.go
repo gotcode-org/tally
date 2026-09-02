@@ -158,6 +158,13 @@ func CycleTheme() string {
 	return t.Name
 }
 
+func GetCurrentThemeName() string {
+	if len(availableThemes) > 0 && currentThemeIdx >= 0 && currentThemeIdx < len(availableThemes) {
+		return availableThemes[currentThemeIdx].Name
+	}
+	return "Unknown"
+}
+
 func ApplyThemeByName(name string) {
 	for i, t := range availableThemes {
 		if t.Name == name {

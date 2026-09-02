@@ -510,7 +510,8 @@ func (m ListModel) View() string {
 	headerFull := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" " + strings.ToUpper(m.title) + cursorIndicator + " ")
 	headerRow := lipgloss.NewStyle().Background(ThemeMauve).Render(m.renderHeader(widths))
 	
-	helpStr := " ↑/↓: move • space: expand • enter/e: edit • n: new • a: add time • m: start (move) • x: delete • t: theme • esc: quit "
+	themeDisplay := GetCurrentThemeName()
+	helpStr := " ↑/↓: move • space: expand • enter/e: edit • n: new • a: add time • m: start (move) • x: delete • t: theme (" + themeDisplay + ") • esc: quit "
 	
 	footerContent := helpStr
 	if m.TimeStats != "" {
