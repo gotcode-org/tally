@@ -243,7 +243,7 @@ func (f *FormModel) View() string {
 		case FieldText:
 			tiView := field.TextInput.View()
 			visibleLen := lipgloss.Width(tiView)
-			targetWidth := 40
+			targetWidth := contentWidth - 10
 			
 			var padded string
 			if visibleLen < targetWidth {
