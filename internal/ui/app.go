@@ -49,30 +49,9 @@ func (m *MainModel) reloadList() {
 
 	var items []*ListItem
 	var lastYear, lastMonth, lastDay *ListItem
+	var backlogNode *ListItem
 	
 	for _, t := range tasks {
-		yStr := t.CreatedAt.Format("2006")
-		mStr := t.CreatedAt.Format("January")
-		dStr := t.CreatedAt.Format("02 (Mon)")
-		
-		if lastYear == nil || lastYear.Title != yStr {
-			lastYear = &ListItem{Title: yStr, Expanded: true}
-			items = append(items, lastYear)
-			lastMonth = nil // Reset month and day
-			lastDay = nil
-		}
-		
-		if lastMonth == nil || lastMonth.Title != mStr {
-			lastMonth = &ListItem{Title: mStr, Expanded: true}
-			lastYear.Children = append(lastYear.Children, lastMonth)
-			lastDay = nil
-		}
-		
-		if lastDay == nil || lastDay.Title != dStr {
-			lastDay = &ListItem{Title: dStr, Expanded: true}
-			lastMonth.Children = append(lastMonth.Children, lastDay)
-		}
-
 		c := ThemeBlue
 		if strings.Contains(strings.ToLower(t.ADOType), "story") {
 			c = ThemeMauve
@@ -94,8 +73,44 @@ func (m *MainModel) reloadList() {
 			TimeText:  timeStr,
 			TypeColor: c,
 		}
+
+		// Intercept Backlog tasks so they skip chronological binning
+		if strings.HasPrefix(t.ID, "backlog-") {
+			if backlogNode == nil {
+				backlogNode = &ListItem{Title: "Backlog", Expanded: true}
+			}
+			backlogNode.Children = append(backlogNode.Children, taskItem)
+			continue
+		}
+
+		yStr := t.CreatedAt.Format("2006")
+		mStr := t.CreatedAt.Format("January")
+		dStr := t.CreatedAt.Format("02 (Mon)")
+		
+		if lastYear == nil || lastYear.Title != yStr {
+			lastYear = &ListItem{Title: yStr, Expanded: true}
+			items = append(items, lastYear)
+			lastMonth = nil // Reset month and day
+			lastDay = nil
+		}
+		
+		if lastMonth == nil || lastMonth.Title != mStr {
+			lastMonth = &ListItem{Title: mStr, Expanded: true}
+			lastYear.Children = append(lastYear.Children, lastMonth)
+			lastDay = nil
+		}
+		
+		if lastDay == nil || lastDay.Title != dStr {
+			lastDay = &ListItem{Title: dStr, Expanded: true}
+			lastMonth.Children = append(lastMonth.Children, lastDay)
+		}
 		
 		lastDay.Children = append(lastDay.Children, taskItem)
+	}
+
+	// If we found any backlog tasks, prepend the Backlog node to the top of the dashboard!
+	if backlogNode != nil {
+		items = append([]*ListItem{backlogNode}, items...)
 	}
 
 	m.list = NewListModel("TALLY DASHBOARD", items)
