@@ -31,3 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Core Domain Model (`internal/core/task.go`) with Azure DevOps and 7pace time-tracking fields.
 - Initial project directory skeleton matching a flat DDD/CQRS architecture.
 - Standardized `GPL-3.0` License headers applied to all Go source files.
+
+## [Unreleased]
+### Added
+- **ADO Hierarchies**: Full parent-child relationship support. Subtasks can be created directly from the TUI by highlighting a parent Story and pressing `c`.
+- **Dashboard Nesting**: Subtasks visually render indented underneath their parent Story on the TUI dashboard tree.
+- **Granular Time Logging**: Core engine upgraded to store discrete `TimeLog` entries instead of a single merged integer, allowing independent syncing of time entries to 7pace with dynamic Activity IDs.
+- **Dynamic Activity Types**: The TUI 'Log Time' dialog now automatically populates an Activity Type dropdown based on the `7pace.activities` map in `~/.config/tally/config.yaml`.
+- **System.LinkTypes.Hierarchy-Reverse Patching**: The ADO sync engine dynamically links child tasks to parent stories in the ADO database during sync sweeps.
+
+### Fixed
+- **ADO WYSIWYG Editor Swallowing**: Markdown body output is now wrapped in explicit HTML `<div>` elements during ADO syncs to prevent Azure DevOps from silently dropping bare text strings in rich text fields.
+- **Recurrence Scheduling Rules**: Overhauled the Reconciliation engine to properly evaluate ISO weeks and calendar boundaries for `weekly`, `monthly`, and `weekdays` rules instead of cloning everything daily.
+- **Ghost Spawns**: Forced the Reconciliation Engine to fire instantly upon form submission so newly created templates spawn clones immediately without requiring an app restart.
+- **Template Sync Exclusion**: Explicitly blocked raw Master Templates (`recur-*`) from syncing to ADO and 7pace to prevent phantom timesheets and ghost work items.
