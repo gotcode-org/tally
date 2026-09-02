@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2026-09-02
 ### Added
+- **TUI Time Summary**: Added live granular time logging summary counters (Day, Week, Month, Year) to the footer of the TUI dashboard.
+- **Dynamic Swimlane TUI Dropdown**: Added a dynamic dropdown to the TUI "Create Task" modal to select ADO swimlanes, driven by a new `ado.swimlanes` array in `config.yaml`.
+- **Default Swimlane Auto-Routing**: Added `ado.default_swimlane` configuration setting so newly created tasks automatically route to the correct ADO board lane upon creation.
 - **ADO Swimlane Support**: Users can now push tasks directly into specific board lanes by setting `ado.swimlane_field` in their config and `swimlane` in their markdown frontmatter.
 - **Tally Debug CLI**: Introduced `tally debug [ado_id]` command to fetch and dump raw JSON payloads from the ADO REST API, specifically helping users hunt down their custom `WEF_*_Kanban.Lane` field names.
 - **ADO Hierarchies**: Full parent-child relationship support. Subtasks can be created directly from the TUI by highlighting a parent Story and pressing `c`.
