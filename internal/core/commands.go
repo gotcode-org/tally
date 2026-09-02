@@ -29,6 +29,7 @@ func (a *App) AddTask(title string, adoType string, tags []string, isBacklog boo
 		Status:    StateOpen,
 		Tags:      tags,
 		Recurrence: recurrence,
+		ParentID:   parentID,
 		CreatedAt: now,
 		UpdatedAt: now,
 		ADOType:   adoType,
