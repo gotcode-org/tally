@@ -181,6 +181,10 @@ func formatStatusCell(status string, width int, isCursor bool, bgStyle lipgloss.
 		fg = ThemeSubtext
 	}
 
+	if isCursor {
+		fg = ThemeBase
+	}
+
 	badge := lipgloss.NewStyle().Foreground(fg).Background(bgStyle.GetBackground()).Bold(true).Render(strings.ToUpper(status))
 	visibleLen := lipgloss.Width(badge)
 
@@ -318,7 +322,11 @@ func (m ListModel) View() string {
 
 		var typeCell string
 		if row.Item.Type != "" {
-			typeCell = lipgloss.NewStyle().Foreground(row.Item.TypeColor).Background(bgStyle.GetBackground()).Bold(true).Render(strings.ToUpper(row.Item.Type))
+			tColor := row.Item.TypeColor
+			if isCursor {
+				tColor = ThemeBase
+			}
+			typeCell = lipgloss.NewStyle().Foreground(tColor).Background(bgStyle.GetBackground()).Bold(true).Render(strings.ToUpper(row.Item.Type))
 		}
 		
 		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor, bgStyle)

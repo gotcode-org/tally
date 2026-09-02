@@ -66,9 +66,9 @@ func (f *FormModel) AddTextBox(name, label, placeholder, help string) {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
 	ti.Prompt = "  "
-	ti.PromptStyle = lipgloss.NewStyle().Foreground(ThemeBlue)
-	ti.TextStyle = lipgloss.NewStyle().Foreground(ThemeText)
-	ti.Cursor.Style = lipgloss.NewStyle().Foreground(ThemeMauve)
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(ThemeBlue).Background(ThemeOverlay)
+	ti.TextStyle = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay)
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(ThemeMauve).Background(ThemeOverlay)
 	f.Fields = append(f.Fields, &Field{Type: FieldText, Name: name, Label: label, Help: help, TextInput: ti})
 }
 
@@ -78,9 +78,12 @@ func (f *FormModel) AddTextArea(name, label, placeholder, help string) {
 	ta.ShowLineNumbers = false
 	ta.SetHeight(3)
 	ta.Prompt = "  "
-	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(ThemeText)
-	ta.Cursor.Style = lipgloss.NewStyle().Foreground(ThemeMauve)
-	ta.BlurredStyle.Base = lipgloss.NewStyle().Foreground(ThemeSubtext)
+	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay)
+	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(ThemeOverlay)
+	ta.FocusedStyle.Text = lipgloss.NewStyle().Background(ThemeOverlay)
+	ta.FocusedStyle.Prompt = lipgloss.NewStyle().Background(ThemeOverlay)
+	ta.Cursor.Style = lipgloss.NewStyle().Foreground(ThemeMauve).Background(ThemeOverlay)
+	ta.BlurredStyle.Base = lipgloss.NewStyle().Foreground(ThemeSubtext).Background(ThemeOverlay)
 	f.Fields = append(f.Fields, &Field{Type: FieldTextArea, Name: name, Label: label, Help: help, TextArea: ta})
 }
 
@@ -233,9 +236,9 @@ func (f *FormModel) View() string {
 
 		var lbl string
 		if focused {
-			lbl = lipgloss.NewStyle().Foreground(ThemeGreen).Bold(true).Render("▶ " + field.Label)
+			lbl = lipgloss.NewStyle().Foreground(ThemeGreen).Background(ThemeOverlay).Bold(true).Render("▶ " + field.Label)
 		} else {
-			lbl = lipgloss.NewStyle().Foreground(ThemeText).Bold(true).Render("  " + field.Label)
+			lbl = lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).Bold(true).Render("  " + field.Label)
 		}
 
 		var view string
@@ -254,7 +257,7 @@ func (f *FormModel) View() string {
 				if focused && j == field.Selected {
 					statusStr += lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeGreen).Bold(true).Render(fmt.Sprintf(" %s %s ", prefix, opt))
 				} else {
-					statusStr += fmt.Sprintf(" %s %s ", prefix, opt)
+					statusStr += lipgloss.NewStyle().Background(ThemeOverlay).Render(fmt.Sprintf(" %s %s ", prefix, opt))
 				}
 			}
 			view = statusStr
@@ -267,7 +270,7 @@ func (f *FormModel) View() string {
 		sections = append(sections, view)
 		
 		if field.Help != "" {
-			sections = append(sections, lipgloss.NewStyle().Foreground(ThemeOverlay).Italic(true).Render("    "+field.Help))
+			sections = append(sections, lipgloss.NewStyle().Foreground(ThemeSubtext).Background(ThemeOverlay).Italic(true).Render("    "+field.Help))
 		}
 		
 		sections = append(sections, "") // Spacing between fields
