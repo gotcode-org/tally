@@ -1,0 +1,292 @@
+package ui
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+type FieldType int
+
+const (
+	FieldText FieldType = iota
+	FieldTextArea
+	FieldSelector
+	FieldBoolean
+	FieldButton
+)
+
+type Field struct {
+	Type     FieldType
+	Name     string
+	Label    string
+	Help     string
+
+	// Models for text
+	TextInput textinput.Model
+	TextArea  textarea.Model
+
+	// State for selectors
+	Options  []string
+	Selected int
+
+	// Action for buttons
+	ButtonBgColor lipgloss.Color
+	ButtonFgColor lipgloss.Color
+	Action        func(form *FormModel) tea.Cmd
+}
+
+type FormModel struct {
+	Title         string
+	Fields        []*Field
+	FocusIndex    int
+	Width         int
+	Height        int
+	terminalWidth int
+	terminalHeight int
+	WidthPct      float64
+	HeightPct     float64
+	Quitting      bool
+	Submitted     bool
+}
+
+func NewForm(title string) *FormModel {
+	return &FormModel{
+		Title:      title,
+		WidthPct:   0.95,
+		HeightPct:  0.95,
+	}
+}
+
+func (f *FormModel) AddTextBox(name, label, placeholder, help string) {
+	ti := textinput.New()
+	ti.Placeholder = placeholder
+	ti.Prompt = "  "
+	ti.PromptStyle = lipgloss.NewStyle().Foreground(CatMochaBlue)
+	ti.TextStyle = lipgloss.NewStyle().Foreground(CatMochaText)
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(CatMochaMauve)
+	f.Fields = append(f.Fields, &Field{Type: FieldText, Name: name, Label: label, Help: help, TextInput: ti})
+}
+
+func (f *FormModel) AddTextArea(name, label, placeholder, help string) {
+	ta := textarea.New()
+	ta.Placeholder = placeholder
+	ta.ShowLineNumbers = false
+	ta.SetHeight(3)
+	ta.Prompt = "  "
+	ta.FocusedStyle.Base = lipgloss.NewStyle().Foreground(CatMochaText)
+	ta.Cursor.Style = lipgloss.NewStyle().Foreground(CatMochaMauve)
+	ta.BlurredStyle.Base = lipgloss.NewStyle().Foreground(CatMochaSubtext)
+	f.Fields = append(f.Fields, &Field{Type: FieldTextArea, Name: name, Label: label, Help: help, TextArea: ta})
+}
+
+func (f *FormModel) AddSelector(name, label string, options []string, help string) {
+	f.Fields = append(f.Fields, &Field{Type: FieldSelector, Name: name, Label: label, Help: help, Options: options})
+}
+
+func (f *FormModel) AddBoolean(name, label, help string) {
+	f.Fields = append(f.Fields, &Field{Type: FieldBoolean, Name: name, Label: label, Help: help, Options: []string{"True", "False"}})
+}
+
+func (f *FormModel) AddButton(label string, bgColor, fgColor lipgloss.Color, action func(form *FormModel) tea.Cmd) {
+	f.Fields = append(f.Fields, &Field{Type: FieldButton, Name: label, Label: label, ButtonBgColor: bgColor, ButtonFgColor: fgColor, Action: action})
+}
+
+func (f *FormModel) GetString(name string) string {
+	for _, field := range f.Fields {
+		if field.Name == name {
+			if field.Type == FieldText {
+				return field.TextInput.Value()
+			}
+			if field.Type == FieldTextArea {
+				return field.TextArea.Value()
+			}
+			if field.Type == FieldSelector || field.Type == FieldBoolean {
+				return field.Options[field.Selected]
+			}
+		}
+	}
+	return ""
+}
+
+func (f *FormModel) updateFocus() {
+	for i, field := range f.Fields {
+		if field.Type == FieldText {
+			if i == f.FocusIndex {
+				field.TextInput.Focus()
+			} else {
+				field.TextInput.Blur()
+			}
+		} else if field.Type == FieldTextArea {
+			if i == f.FocusIndex {
+				field.TextArea.Focus()
+			} else {
+				field.TextArea.Blur()
+			}
+		}
+	}
+}
+
+func (f *FormModel) Init() tea.Cmd {
+	f.updateFocus()
+	return nil
+}
+
+func (f *FormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		f.terminalWidth = msg.Width
+		f.terminalHeight = msg.Height
+		f.Width = int(float64(msg.Width) * f.WidthPct)
+		if f.Width < 60 {
+			f.Width = 60
+		}
+		f.Height = int(float64(msg.Height) * f.HeightPct)
+		
+		for _, field := range f.Fields {
+			if field.Type == FieldText {
+				field.TextInput.Width = f.Width - 10
+			}
+			if field.Type == FieldTextArea {
+				field.TextArea.SetWidth(f.Width - 10)
+			}
+		}
+		return f, nil
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "esc":
+			f.Quitting = true
+			return f, tea.Quit
+		case "tab":
+			f.FocusIndex = (f.FocusIndex + 1) % len(f.Fields)
+			f.updateFocus()
+			return f, nil
+		case "shift+tab":
+			f.FocusIndex = (f.FocusIndex - 1 + len(f.Fields)) % len(f.Fields)
+			f.updateFocus()
+			return f, nil
+		case "enter":
+			if f.Fields[f.FocusIndex].Type == FieldButton {
+				return f, f.Fields[f.FocusIndex].Action(f)
+			}
+		case "left", "h":
+			field := f.Fields[f.FocusIndex]
+			if (field.Type == FieldSelector || field.Type == FieldBoolean) && field.Selected > 0 {
+				field.Selected--
+				return f, nil
+			}
+		case "right", "l":
+			field := f.Fields[f.FocusIndex]
+			if (field.Type == FieldSelector || field.Type == FieldBoolean) && field.Selected < len(field.Options)-1 {
+				field.Selected++
+				return f, nil
+			}
+		}
+	}
+
+	if len(f.Fields) > 0 {
+		field := f.Fields[f.FocusIndex]
+		if field.Type == FieldText {
+			var cmd tea.Cmd
+			field.TextInput, cmd = field.TextInput.Update(msg)
+			return f, cmd
+		} else if field.Type == FieldTextArea {
+			var cmd tea.Cmd
+			field.TextArea, cmd = field.TextArea.Update(msg)
+			return f, cmd
+		}
+	}
+
+	return f, nil
+}
+
+func (f *FormModel) View() string {
+	if f.Quitting || f.Submitted {
+		return ""
+	}
+
+	var sections []string
+	headerFull := lipgloss.NewStyle().Width(f.Width).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(" " + strings.ToUpper(f.Title) + " ")
+	sections = append(sections, headerFull)
+
+	contentWidth := f.Width - 4
+
+	var buttonViews []string
+
+	for i, field := range f.Fields {
+		focused := i == f.FocusIndex
+		
+		if field.Type == FieldButton {
+			var view string
+			if focused {
+				view = lipgloss.NewStyle().Foreground(field.ButtonFgColor).Background(field.ButtonBgColor).Padding(0, 2).Bold(true).Render("▶ " + field.Label + " ◀")
+			} else {
+				view = lipgloss.NewStyle().Foreground(field.ButtonFgColor).Background(field.ButtonBgColor).Padding(0, 3).Render(field.Label)
+			}
+			buttonViews = append(buttonViews, view)
+			continue
+		}
+
+		var lbl string
+		if focused {
+			lbl = lipgloss.NewStyle().Foreground(CatMochaGreen).Bold(true).Render("▶ " + field.Label)
+		} else {
+			lbl = lipgloss.NewStyle().Foreground(CatMochaText).Bold(true).Render("  " + field.Label)
+		}
+
+		var view string
+		switch field.Type {
+		case FieldText:
+			view = field.TextInput.View()
+		case FieldTextArea:
+			view = field.TextArea.View()
+		case FieldSelector, FieldBoolean:
+			statusStr := ""
+			for j, opt := range field.Options {
+				prefix := "○"
+				if j == field.Selected {
+					prefix = "⊙"
+				}
+				if focused && j == field.Selected {
+					statusStr += lipgloss.NewStyle().Foreground(CatMochaBase).Background(CatMochaGreen).Bold(true).Render(fmt.Sprintf(" %s %s ", prefix, opt))
+				} else {
+					statusStr += fmt.Sprintf(" %s %s ", prefix, opt)
+				}
+			}
+			view = statusStr
+		}
+
+		if lbl != "" {
+			sections = append(sections, lbl)
+		}
+		
+		sections = append(sections, view)
+		
+		if field.Help != "" {
+			sections = append(sections, lipgloss.NewStyle().Foreground(CatMochaOverlay).Italic(true).Render("    "+field.Help))
+		}
+		
+		sections = append(sections, "") // Spacing between fields
+	}
+
+	if len(buttonViews) > 0 {
+		buttonsStr := strings.Join(buttonViews, "   ")
+		// Align buttons to the center
+		sections = append(sections, lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Center).Background(CatMochaBase).Render(buttonsStr))
+	}
+
+	sections = append(sections, "") // Spacing before footer
+
+	helpText := " tab/shift+tab: move • ←/→: select • enter: submit • esc: quit "
+	footer := lipgloss.NewStyle().Width(f.Width).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(helpText)
+	sections = append(sections, footer)
+
+	formContent := strings.Join(sections, "\n")
+	
+	win := lipgloss.NewStyle().Background(CatMochaBase).Width(f.Width).Render(formContent)
+	return lipgloss.Place(f.terminalWidth, f.terminalHeight, lipgloss.Center, lipgloss.Top, win, lipgloss.WithWhitespaceBackground(CatMochaBase))
+}
