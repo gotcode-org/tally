@@ -69,7 +69,8 @@ func (m *MainModel) reloadList() {
 	m.list = NewListModel("TALLY DASHBOARD", items)
 	// Propagate dimensions if already set
 	if m.terminalWidth > 0 {
-		m.list.Update(tea.WindowSizeMsg{Width: m.terminalWidth, Height: m.terminalHeight})
+		newM, _ := m.list.Update(tea.WindowSizeMsg{Width: m.terminalWidth, Height: m.terminalHeight})
+		m.list = newM.(ListModel)
 	}
 }
 
