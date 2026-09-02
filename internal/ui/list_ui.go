@@ -20,6 +20,7 @@ type CreateNewTaskMsg struct{}
 type EditTaskMsg struct{ ID string }
 type EditorFinishedMsg struct{ Err error }
 type SyncTasksMsg struct{}
+type CycleThemeMsg struct{}
 type SyncFinishedMsg struct{ Err error }
 
 type ListItem struct {
@@ -99,6 +100,8 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "n":
 			return m, func() tea.Msg { return CreateNewTaskMsg{} }
+		case "t":
+			return m, func() tea.Msg { return CycleThemeMsg{} }
 		case "s":
 			return m, func() tea.Msg { return SyncTasksMsg{} }
 		case "e":
@@ -342,7 +345,7 @@ func (m ListModel) View() string {
 	headerFull := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" " + strings.ToUpper(m.title) + cursorIndicator + " ")
 	headerRow := lipgloss.NewStyle().Background(ThemeMauve).Render(m.renderHeader(widths))
 	
-	helpStr := " ↑/↓: move • enter: expand • e: edit • n: new • s: sync • esc: quit "
+	helpStr := " ↑/↓: move • enter: expand • e: edit • n: new • s: sync • t: theme • esc: quit "
 	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(helpStr)
 	
 	finalContent := headerFull + "\n" + headerRow + "\n" + paddedList + "\n" + footer

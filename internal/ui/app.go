@@ -150,6 +150,11 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 		
+	case CycleThemeMsg:
+		CycleTheme()
+		m.reloadList() // redraw with new global styles
+		return m, nil
+
 	case SyncTasksMsg:
 		// Execute the sync command in a shell so we can pause and let the user read the output
 		executable := os.Args[0]
