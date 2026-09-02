@@ -276,7 +276,7 @@ func (f *FormModel) View() string {
 	if len(buttonViews) > 0 {
 		buttonsStr := strings.Join(buttonViews, "   ")
 		// Align buttons to the center
-		sections = append(sections, lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Center).Background(ThemeBase).Render(buttonsStr))
+		sections = append(sections, lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Center).Background(ThemeOverlay).Render(buttonsStr))
 	}
 
 	sections = append(sections, "") // Spacing before footer
@@ -290,6 +290,6 @@ func (f *FormModel) View() string {
 
 	formContent := sections[0] + "\n" + paddedBody + "\n" + footer
 	
-	win := lipgloss.NewStyle().Background(ThemeBase).Width(f.Width).Height(f.Height).Render(formContent)
+	win := lipgloss.NewStyle().Background(ThemeOverlay).Width(f.Width).Height(f.Height).Render(formContent)
 	return lipgloss.Place(f.terminalWidth, f.terminalHeight, lipgloss.Center, lipgloss.Top, win)
 }
