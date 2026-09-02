@@ -146,8 +146,8 @@ func (m ListModel) renderHeader(widths []int) string {
 		cells = append(cells, styled)
 	}
 
-	prefix := lipgloss.NewStyle().Background(ThemeOverlay).Render("  ")
-	separator := lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeOverlay).Render(" │ ")
+	prefix := lipgloss.NewStyle().Background(ThemeMauve).Render("  ")
+	separator := lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeMauve).Render(" │ ")
 	middle := prefix + strings.Join(cells, separator)
 
 	var parts []string
