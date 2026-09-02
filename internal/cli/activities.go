@@ -12,16 +12,9 @@ import (
 	"gotcode.org/tally/internal/config"
 )
 
-type ActivityResponse struct {
-	// 7pace might return under "data" or "value" depending on the specific API endpoint version
-	Data []struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"data"`
-	Value []struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"value"`
+type ActivityItem struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 func newActivitiesCmd() *cobra.Command {
@@ -74,14 +67,36 @@ func newActivitiesCmd() *cobra.Command {
 				return fmt.Errorf("7pace API returned HTTP %d: %s", resp.StatusCode, string(body))
 			}
 
-			var payload ActivityResponse
-			if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-				return fmt.Errorf("failed to decode JSON response: %w", err)
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			
+			var genericPayload map[string]interface{}
+			if err := json.Unmarshal(bodyBytes, &genericPayload); err != nil {
+				return fmt.Errorf("failed to decode JSON response: %w\nRaw Body: %s", err, string(bodyBytes))
 			}
 
-			items := payload.Data
-			if len(items) == 0 {
-				items = payload.Value
+			var items []ActivityItem
+
+			// 7pace API can be wildly inconsistent. We will dynamically search for the array.
+			var targetArray []interface{}
+			
+			if val, ok := genericPayload["data"].([]interface{}); ok {
+				targetArray = val
+			} else if val, ok := genericPayload["value"].([]interface{}); ok {
+				targetArray = val
+			} else if val, ok := genericPayload["items"].([]interface{}); ok {
+				targetArray = val
+			}
+
+			if targetArray != nil {
+				for _, obj := range targetArray {
+					if m, ok := obj.(map[string]interface{}); ok {
+						id, _ := m["id"].(string)
+						name, _ := m["name"].(string)
+						if id != "" && name != "" {
+							items = append(items, ActivityItem{ID: id, Name: name})
+						}
+					}
+				}
 			}
 
 			if len(items) == 0 {
