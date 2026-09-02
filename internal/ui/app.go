@@ -150,6 +150,20 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 		
+	case SyncTasksMsg:
+		// Execute the sync command in a shell so we can pause and let the user read the output
+		executable := os.Args[0]
+		script := fmt.Sprintf("%s sync && echo '' && read -p 'Press Enter to return to Dashboard...'", executable)
+		c := exec.Command("bash", "-c", script)
+		
+		return m, tea.ExecProcess(c, func(err error) tea.Msg {
+			return SyncFinishedMsg{Err: err}
+		})
+		
+	case SyncFinishedMsg:
+		m.reloadList() // Pull fresh data in case sync updated anything locally
+		return m, nil
+
 	case EditTaskMsg:
 		editor := os.Getenv("EDITOR")
 		if editor == "" {

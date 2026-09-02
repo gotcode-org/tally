@@ -19,6 +19,8 @@ var (
 type CreateNewTaskMsg struct{}
 type EditTaskMsg struct{ ID string }
 type EditorFinishedMsg struct{ Err error }
+type SyncTasksMsg struct{}
+type SyncFinishedMsg struct{ Err error }
 
 type ListItem struct {
 	ID           string
@@ -97,6 +99,8 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "n":
 			return m, func() tea.Msg { return CreateNewTaskMsg{} }
+		case "s":
+			return m, func() tea.Msg { return SyncTasksMsg{} }
 		case "e":
 			flatRows := m.getFlatRows()
 			if len(flatRows) > 0 {
@@ -338,7 +342,7 @@ func (m ListModel) View() string {
 	headerFull := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(" " + strings.ToUpper(m.title) + cursorIndicator + " ")
 	headerRow := lipgloss.NewStyle().Background(CatMochaMauve).Render(m.renderHeader(widths))
 	
-	helpStr := " ↑/↓: move • enter: expand • e: edit • n: new task • esc: quit "
+	helpStr := " ↑/↓: move • enter: expand • e: edit • n: new • s: sync • esc: quit "
 	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(helpStr)
 	
 	finalContent := headerFull + "\n" + headerRow + "\n" + paddedList + "\n" + footer
