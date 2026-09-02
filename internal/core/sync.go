@@ -187,11 +187,19 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 				
 				resp, err := client.Do(req)
 				if err == nil {
+					body, _ := io.ReadAll(resp.Body)
 					if resp.StatusCode >= 400 {
-						body, _ := io.ReadAll(resp.Body)
 						fmt.Printf("  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
 					} else {
 						fmt.Printf("  -> Successfully updated ADO Work Item #%d\n", *t.ADOID)
+						// Dump the payload we sent and the ADO response for debugging
+						fmt.Printf("     [DEBUG] Sent Payload: %s\n", string(payload))
+						// Only print the first 200 chars of response so we don't flood the terminal
+						respStr := string(body)
+						if len(respStr) > 500 {
+							respStr = respStr[:500] + "..."
+						}
+						fmt.Printf("     [DEBUG] ADO Response: %s\n", respStr)
 					}
 					resp.Body.Close()
 				}
