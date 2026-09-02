@@ -281,12 +281,15 @@ func (f *FormModel) View() string {
 
 	sections = append(sections, "") // Spacing before footer
 
-	helpText := " tab/shift+tab: move • ←/→: select • enter: submit • esc: quit "
+		helpText := " tab/shift+tab: move • ←/→: select • enter: submit • esc: quit "
 	footer := lipgloss.NewStyle().Width(f.Width).Align(lipgloss.Center).Background(CatMochaMauve).Foreground(CatMochaBase).Bold(true).Render(helpText)
-	sections = append(sections, footer)
 
-	formContent := strings.Join(sections, "\n")
+	// Combine body sections and force height so the footer is pushed exactly to the bottom
+	bodyContent := strings.Join(sections[1:], "\n")
+	paddedBody := lipgloss.NewStyle().Height(f.Height - 2).Render(bodyContent)
+
+	formContent := sections[0] + "\n" + paddedBody + "\n" + footer
 	
-	win := lipgloss.NewStyle().Background(CatMochaBase).Width(f.Width).Render(formContent)
+	win := lipgloss.NewStyle().Background(CatMochaBase).Width(f.Width).Height(f.Height).Render(formContent)
 	return lipgloss.Place(f.terminalWidth, f.terminalHeight, lipgloss.Center, lipgloss.Top, win, lipgloss.WithWhitespaceBackground(CatMochaBase))
 }
