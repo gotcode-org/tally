@@ -208,7 +208,14 @@ func (m *MainModel) reloadList() {
 			statusStr = "New"
 		}
 		
-		if isArchive(statusStr) {
+		displayStr := statusStr
+		if cfg != nil && cfg.UI.StateAliases != nil {
+			if alias, ok := cfg.UI.StateAliases[statusStr]; ok {
+				displayStr = alias
+			}
+		}
+		
+		if isArchive(statusStr) || isArchive(displayStr) {
 			if archiveRoot == nil {
 				expanded := false
 				if val, ok := m.expandedState["folder:Archive"]; ok { expanded = val }
@@ -264,13 +271,13 @@ func (m *MainModel) reloadList() {
 			continue
 		}
 		
-		// It's an active task, group by state
-		node, exists := stateNodes[statusStr]
+		// It's an active task, group by state alias
+		node, exists := stateNodes[displayStr]
 		if !exists {
 			expanded := true // Default to expanded for active states
-			if val, ok := m.expandedState["folder:"+statusStr]; ok { expanded = val }
-			node = &ListItem{Title: statusStr, Expanded: expanded}
-			stateNodes[statusStr] = node
+			if val, ok := m.expandedState["folder:"+displayStr]; ok { expanded = val }
+			node = &ListItem{Title: displayStr, Expanded: expanded}
+			stateNodes[displayStr] = node
 		}
 		node.Children = append(node.Children, taskItem)
 	}

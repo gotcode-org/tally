@@ -47,9 +47,10 @@ type Config struct {
 	} `yaml:"7pace"`
 
 	UI struct {
-		Theme           string   `yaml:"theme"`
-		DashboardStates []string `yaml:"dashboard_states,omitempty"`
-		ArchiveStates   []string `yaml:"archive_states,omitempty"`
+		Theme           string            `yaml:"theme"`
+		DashboardStates []string          `yaml:"dashboard_states,omitempty"`
+		ArchiveStates   []string          `yaml:"archive_states,omitempty"`
+		StateAliases    map[string]string `yaml:"state_aliases,omitempty"`
 	} `yaml:"ui"`
 }
 
