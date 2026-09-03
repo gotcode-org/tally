@@ -561,6 +561,14 @@ func (m ListModel) View() string {
 	for len(listSections) < visibleRows {
 		listSections = append(listSections, renderRow("", "", "", "", "", widths, false, lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeOverlay))[0])
 	}
+	
+	if m.confirmingID != "" {
+		prompt := lipgloss.NewStyle().Foreground(ThemeRed).Background(ThemeBase).Bold(true).Render(
+			fmt.Sprintf(" ⚠ Are you sure you want to permanently delete '%s'? (y/N) ", m.confirmingTitle))
+		if len(listSections) > 0 {
+			listSections[len(listSections)-1] = prompt
+		}
+	}
 
 	paddedList := lipgloss.NewStyle().
 		Background(ThemeOverlay).
