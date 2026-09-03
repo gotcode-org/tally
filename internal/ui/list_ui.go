@@ -38,6 +38,7 @@ type EditTaskMsg struct{ ID string }
 type EditorFinishedMsg struct{ Err error }
 type SyncTasksMsg struct{}
 type PullTasksMsg struct{}
+type PushSingleTaskMsg struct{ ID string }
 type CycleThemeMsg struct{}
 
 type RefreshMsg struct{}
@@ -155,6 +156,14 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg { return SyncTasksMsg{} }
 		case "p":
 			return m, func() tea.Msg { return PullTasksMsg{} }
+		case "u":
+			flatRows := m.getFlatRows()
+			if len(flatRows) > 0 {
+				row := flatRows[m.cursor]
+				if row.Item.ID != "" {
+					return m, func() tea.Msg { return PushSingleTaskMsg{ID: row.Item.ID} }
+				}
+			}
 		case "e", "enter":
 			flatRows := m.getFlatRows()
 			if len(flatRows) > 0 {

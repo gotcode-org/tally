@@ -539,6 +539,14 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return SyncFinishedMsg{Err: err}
 		})
 		
+	case PushSingleTaskMsg:
+		executable := os.Args[0]
+		script := fmt.Sprintf(`"$0" push "%s" && echo '' && read -p 'Press Enter to return to Dashboard...'`, msg.ID)
+		c := exec.Command("bash", "-c", script, executable)
+		return m, tea.ExecProcess(c, func(err error) tea.Msg {
+			return SyncFinishedMsg{Err: err}
+		})
+		
 	case SyncFinishedMsg:
 		m.coreApp.ReconcileRecurringTasks()
 		m.reloadList() // Pull fresh data in case sync updated anything locally

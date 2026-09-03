@@ -498,3 +498,124 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 	fmt.Printf("Successfully restored %d missing tasks from ADO!", restoredCount)
 	return nil
 }
+
+// SyncSingle executes the network operations to push a single local task to ADO and 7pace.
+func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken string, taskID string) error {
+	t, err := a.Store.Load(taskID)
+	if err != nil {
+		return fmt.Errorf("failed to load task %s: %w", taskID, err)
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	orgName := extractOrgName(cfg.ADO.Organization)
+
+	if t.ADOID == nil {
+		fmt.Printf("Task %s is not linked to ADO (no ADOID). Ignoring push.\n", t.ID)
+	} else {
+		fmt.Printf("Syncing task %s (ADO #%d) to ADO...\n", t.ID, *t.ADOID)
+		
+		patch := []map[string]interface{}{
+			{"op": "add", "path": "/fields/System.Title", "value": t.Title},
+			{"op": "add", "path": "/fields/System.State", "value": string(t.Status)},
+		}
+		
+		if t.Body != "" {
+			desc, ac := parseMarkdownSections(t.Body)
+			if desc != "" {
+				patch = append(patch, map[string]interface{}{
+					"op": "add", "path": "/fields/System.Description", "value": desc,
+				})
+			}
+			if ac != "" {
+				patch = append(patch, map[string]interface{}{
+					"op": "add", "path": "/fields/Microsoft.VSTS.Common.AcceptanceCriteria", "value": ac,
+				})
+			}
+		}
+		
+		if len(t.Tags) > 0 {
+			patch = append(patch, map[string]interface{}{
+				"op": "add", "path": "/fields/System.Tags", "value": strings.Join(t.Tags, "; "),
+			})
+		}
+
+		payload, _ := json.Marshal(patch)
+		url := fmt.Sprintf("%s/%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject, *t.ADOID)
+		
+		req, _ := http.NewRequest("PATCH", url, bytes.NewBuffer(payload))
+		req.Header.Set("Content-Type", "application/json-patch+json")
+		req.SetBasicAuth("", adoPat)
+		
+		resp, err := client.Do(req)
+		if err == nil {
+			body, _ := io.ReadAll(resp.Body)
+			if resp.StatusCode >= 400 {
+				fmt.Printf("  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
+			} else {
+				fmt.Printf("  -> Successfully updated ADO Work Item #%d\n", *t.ADOID)
+			}
+			resp.Body.Close()
+		}
+	}
+
+	hasChanges := false
+	for i := range t.TimeLogs {
+		logEntry := &t.TimeLogs[i]
+		if logEntry.Synced || t.ADOID == nil {
+			continue
+		}
+
+		fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n", logEntry.Seconds, *t.ADOID)
+		
+		logData := map[string]interface{}{
+			"timestamp":  logEntry.Timestamp.Format(time.RFC3339),
+			"length":     logEntry.Seconds,
+			"workItemId": *t.ADOID,
+			"comment":    "Logged via Tally terminal",
+		}
+		
+		actID := logEntry.ActivityID
+		if actID == "" {
+			actID = cfg.SevenPace.ActivityID
+		}
+		
+		if len(actID) >= 32 {
+			logData["activityTypeId"] = actID
+		}
+		
+		payload, _ := json.Marshal(logData)
+		url := fmt.Sprintf("https://%s.timehub.7pace.com/api/rest/workLogs?api-version=3.1", orgName)
+		
+		req, _ := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+sevenPaceToken)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("network error hitting 7pace: %w", err)
+		}
+		
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			logEntry.Synced = true
+			hasChanges = true
+			fmt.Printf("  -> Time successfully logged to 7pace!\n")
+		} else {
+			body, _ := io.ReadAll(resp.Body)
+			fmt.Printf("  -> Failed to log time to 7pace (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
+		}
+		resp.Body.Close()
+	}
+	
+	if hasChanges {
+		synced := 0
+		for _, l := range t.TimeLogs {
+			if l.Synced {
+				synced += l.Seconds
+			}
+		}
+		t.SyncedSeconds = synced
+		a.Store.Save(t)
+	}
+
+	return nil
+}

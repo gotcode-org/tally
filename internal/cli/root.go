@@ -39,6 +39,7 @@ func Execute() {
 	rootCmd.AddCommand(newConfigCmd())
 	rootCmd.AddCommand(newSyncCmd())
 	rootCmd.AddCommand(newFetchCmd())
+	rootCmd.AddCommand(newPushCmd())
 	rootCmd.AddCommand(newEditCmd())
 	rootCmd.AddCommand(newStateCmd())
 	rootCmd.AddCommand(newPointsCmd())
