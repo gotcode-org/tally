@@ -460,9 +460,9 @@ func (m ListModel) View() string {
 	}
 	
 	// Fixed widths for auxiliary columns to keep them crisp
-	wID := 18
+	wID := 24
 	wTime := 8
-	wType := 14
+	wType := 10
 	wStatus := 16
 	
 	wName := availableWidth - (wID + wTime + wType + wStatus)
