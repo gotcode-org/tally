@@ -39,6 +39,7 @@ type Config struct {
 		DefaultSwimlane  string `yaml:"default_swimlane,omitempty"`
 		Swimlanes        []string `yaml:"swimlanes,omitempty"`
 		Debug          bool     `yaml:"debug,omitempty"`
+		FetchDays      int      `yaml:"fetch_days,omitempty"`
 	} `yaml:"ado"`
 
 	SevenPace struct {

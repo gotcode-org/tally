@@ -395,7 +395,11 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 	client := &http.Client{Timeout: 30 * time.Second}
 	
 	// WIQL query for everything assigned to me
-	query := `{"query": "Select [System.Id], [System.Title], [System.State], [System.WorkItemType] From WorkItems Where [System.AssignedTo] = @Me"}`
+	fetchDays := cfg.ADO.FetchDays
+	if fetchDays <= 0 {
+		fetchDays = 30
+	}
+	query := fmt.Sprintf(`{"query": "Select [System.Id], [System.Title], [System.State], [System.WorkItemType] From WorkItems Where [System.AssignedTo] = @Me AND [System.ChangedDate] >= @Today - %d"}`, fetchDays)
 	
 	url := fmt.Sprintf("%s/%s/_apis/wit/wiql?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject)
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer([]byte(query)))
@@ -460,8 +464,20 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 			state, _ := details.Fields["System.State"].(string)
 			adoType, _ := details.Fields["System.WorkItemType"].(string)
 			
-			now := time.Now()
-			newID, _ := a.Store.GetNextID(now, false)
+			createdStr, _ := details.Fields["System.CreatedDate"].(string)
+			changedStr, _ := details.Fields["System.ChangedDate"].(string)
+			
+			createdAt := time.Now()
+			if t, err := time.Parse(time.RFC3339, createdStr); err == nil {
+				createdAt = t
+			}
+			
+			updatedAt := time.Now()
+			if t, err := time.Parse(time.RFC3339, changedStr); err == nil {
+				updatedAt = t
+			}
+			
+			newID, _ := a.Store.GetNextID(createdAt, false)
 			
 			adoIdVal := wi.ID
 			newTask := &Task{
@@ -470,8 +486,8 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 				Status: TaskState(state),
 				ADOType: adoType,
 				ADOID: &adoIdVal,
-				CreatedAt: now,
-				UpdatedAt: now,
+				CreatedAt: createdAt,
+				UpdatedAt: updatedAt,
 			}
 			
 			a.Store.Save(newTask)
