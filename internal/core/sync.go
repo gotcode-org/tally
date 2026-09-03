@@ -470,6 +470,11 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 			state, _ := details.Fields["System.State"].(string)
 			adoType, _ := details.Fields["System.WorkItemType"].(string)
 			
+			var spPtr *float64
+			if spVal, ok := details.Fields["Microsoft.VSTS.Scheduling.StoryPoints"].(float64); ok {
+				spPtr = &spVal
+			}
+			
 			createdStr, _ := details.Fields["System.CreatedDate"].(string)
 			changedStr, _ := details.Fields["System.ChangedDate"].(string)
 			
@@ -505,6 +510,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 				Title: title,
 				Status: TaskState(state),
 				ADOType: adoType,
+				StoryPoints: spPtr,
 				ADOID: &adoIdVal,
 				CreatedAt: createdAt,
 				UpdatedAt: updatedAt,
@@ -621,6 +627,11 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 			state, _ := details.Fields["System.State"].(string)
 			adoType, _ := details.Fields["System.WorkItemType"].(string)
 			
+			var spPtr *float64
+			if spVal, ok := details.Fields["Microsoft.VSTS.Scheduling.StoryPoints"].(float64); ok {
+				spPtr = &spVal
+			}
+			
 			createdStr, _ := details.Fields["System.CreatedDate"].(string)
 			changedStr, _ := details.Fields["System.ChangedDate"].(string)
 			
@@ -650,6 +661,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 				Title: title,
 				Status: TaskState(state),
 				ADOType: adoType,
+				StoryPoints: spPtr,
 				ADOID: &adoIdVal,
 				CreatedAt: createdAt,
 				UpdatedAt: updatedAt,
