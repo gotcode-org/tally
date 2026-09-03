@@ -24,6 +24,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"strconv"
 	"time"
 
 	"gotcode.org/tally/internal/config"
@@ -286,7 +287,7 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 				continue
 			}
 
-			fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n\n", logEntry.Seconds, *t.ADOID)
+			fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n\n\n", logEntry.Seconds, *t.ADOID)
 			
 			logData := map[string]interface{}{
 				"timestamp":  logEntry.Timestamp.Format(time.RFC3339),
@@ -394,7 +395,6 @@ func parseMarkdownSections(body string) (description, acceptanceCriteria string)
 func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 	client := &http.Client{Timeout: 30 * time.Second}
 	
-	// WIQL query for everything assigned to me
 	fetchDays := cfg.ADO.FetchDays
 	if fetchDays <= 0 {
 		fetchDays = 30
@@ -427,24 +427,25 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 		return err
 	}
 	
-	// Load all existing tasks to see what we already have
 	tasks, _ := a.Store.ListTasks("")
-	existingADO := make(map[int]bool)
+	adoToLocal := make(map[int]string)
 	for _, t := range tasks {
 		if t.ADOID != nil {
-			existingADO[*t.ADOID] = true
+			adoToLocal[*t.ADOID] = t.ID
 		}
 	}
 	
 	fmt.Printf("WIQL returned %d tasks assigned to you. Comparing against local files...\n", len(wiqlResp.WorkItems))
 	
-	restoredCount := 0
+	var pendingTasks []*Task
+	childToParentADO := make(map[string]int)
+	
 	for _, wi := range wiqlResp.WorkItems {
-		if !existingADO[wi.ID] {
+		if adoToLocal[wi.ID] == "" {
 			fmt.Printf("Restoring missing task ADO #%d...\n", wi.ID)
 			
-			// Fetch full details
-			detailUrl := fmt.Sprintf("%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), wi.ID)
+			// Fetch full details WITH RELATIONS
+			detailUrl := fmt.Sprintf("%s/_apis/wit/workitems/%d?api-version=7.0&$expand=relations", strings.TrimRight(cfg.ADO.Organization, "/"), wi.ID)
 			req2, _ := http.NewRequest("GET", detailUrl, nil)
 			req2.SetBasicAuth("", adoPat)
 			
@@ -455,6 +456,10 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 			
 			var details struct {
 				Fields map[string]interface{} `json:"fields"`
+				Relations []struct {
+					Rel string `json:"rel"`
+					URL string `json:"url"`
+				} `json:"relations"`
 			}
 			dBody, _ := io.ReadAll(resp2.Body)
 			resp2.Body.Close()
@@ -490,12 +495,35 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 				UpdatedAt: updatedAt,
 			}
 			
-			a.Store.Save(newTask)
-			restoredCount++
+			// Register in map so subsequent children can find it
+			adoToLocal[wi.ID] = newID
+			pendingTasks = append(pendingTasks, newTask)
+			
+			// Check for parent relation
+			for _, rel := range details.Relations {
+				if rel.Rel == "System.LinkTypes.Hierarchy-Reverse" {
+					parts := strings.Split(rel.URL, "/")
+					if len(parts) > 0 {
+						if parentID, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
+							childToParentADO[newID] = parentID
+						}
+					}
+				}
+			}
 		}
 	}
 	
-	fmt.Printf("Successfully restored %d missing tasks from ADO!", restoredCount)
+	// Pass 2: Reconstruct Hierarchy and Save
+	for _, t := range pendingTasks {
+		if parentADO, ok := childToParentADO[t.ID]; ok {
+			if localParentID, exists := adoToLocal[parentADO]; exists {
+				t.ParentID = localParentID
+			}
+		}
+		a.Store.Save(t)
+	}
+	
+	fmt.Printf("Successfully restored %d missing tasks from ADO!\n", len(pendingTasks))
 	return nil
 }
 
@@ -512,7 +540,7 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 	if t.ADOID == nil {
 		fmt.Printf("Task %s is not linked to ADO (no ADOID). Ignoring push.\n", t.ID)
 	} else {
-		fmt.Printf("Syncing task %s (ADO #%d) to ADO...\n", t.ID, *t.ADOID)
+		fmt.Printf("Syncing task %s (ADO #%d...\no ADO...\n", t.ID, *t.ADOID)
 		
 		patch := []map[string]interface{}{
 			{"op": "add", "path": "/fields/System.Title", "value": t.Title},
@@ -565,7 +593,7 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 			continue
 		}
 
-		fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n", logEntry.Seconds, *t.ADOID)
+		fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n\n", logEntry.Seconds, *t.ADOID)
 		
 		logData := map[string]interface{}{
 			"timestamp":  logEntry.Timestamp.Format(time.RFC3339),
