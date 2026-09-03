@@ -731,6 +731,36 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 				"op": "add", "path": "/fields/System.Tags", "value": strings.Join(t.Tags, "; "),
 			})
 		}
+		
+		if cfg.ADO.SwimlaneField != "" && t.Swimlane != "" {
+			patch = append(patch, map[string]interface{}{
+				"op": "add", "path": "/fields/" + cfg.ADO.SwimlaneField, "value": t.Swimlane,
+			})
+		}
+		
+		if t.StoryPoints != nil {
+			patch = append(patch, map[string]interface{}{
+				"op": "add", "path": "/fields/Microsoft.VSTS.Scheduling.StoryPoints", "value": *t.StoryPoints,
+			})
+		}
+		
+		// Handle ADO Hierarchy Linking
+		if t.ParentID != "" {
+			parentTask, err := a.Store.Load(t.ParentID)
+			if err == nil && parentTask.ADOID != nil {
+				patch = append(patch, map[string]interface{}{
+					"op": "add",
+					"path": "/relations/-",
+					"value": map[string]interface{}{
+						"rel": "System.LinkTypes.Hierarchy-Reverse",
+						"url": fmt.Sprintf("%s/_apis/wit/workitems/%d", strings.TrimRight(cfg.ADO.Organization, "/"), *parentTask.ADOID),
+						"attributes": map[string]interface{}{
+							"comment": "Linked via Tally",
+						},
+					},
+				})
+			}
+		}
 
 		payload, _ := json.Marshal(patch)
 		url := fmt.Sprintf("%s/%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject, *t.ADOID)
