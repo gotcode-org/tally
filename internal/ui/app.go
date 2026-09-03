@@ -525,10 +525,16 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case SyncTasksMsg:
 		// Execute the sync command in a shell so we can pause and let the user read the output
 		executable := os.Args[0]
-		// Use $0 to safely pass the executable path as an argument to bash, preventing command injection
 		script := `"$0" sync && echo '' && read -p 'Press Enter to return to Dashboard...'`
 		c := exec.Command("bash", "-c", script, executable)
+		return m, tea.ExecProcess(c, func(err error) tea.Msg {
+			return SyncFinishedMsg{Err: err}
+		})
 		
+	case PullTasksMsg:
+		executable := os.Args[0]
+		script := `"$0" fetch && echo '' && read -p 'Press Enter to return to Dashboard...'`
+		c := exec.Command("bash", "-c", script, executable)
 		return m, tea.ExecProcess(c, func(err error) tea.Msg {
 			return SyncFinishedMsg{Err: err}
 		})
