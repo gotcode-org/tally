@@ -392,7 +392,7 @@ func parseMarkdownSections(body string) (description, acceptanceCriteria string)
 }
 
 // Fetch queries ADO for all work items assigned to the current user, and restores any missing local markdown files.
-func (a *App) Fetch(cfg *config.Config, adoPat string) error {
+func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) error {
 	client := &http.Client{Timeout: 30 * time.Second}
 	
 	fetchDays := cfg.ADO.FetchDays
@@ -508,6 +508,40 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 				ADOID: &adoIdVal,
 				CreatedAt: createdAt,
 				UpdatedAt: updatedAt,
+			}
+			
+			// Fetch existing time from 7pace
+			orgName := extractOrgName(cfg.ADO.Organization)
+			if orgName != "" && sevenPaceToken != "" {
+				sevenUrl := fmt.Sprintf("https://%s.timehub.7pace.com/api/rest/workLogs?api-version=3.1&$filter=WorkItemId%%20eq%%20%d", orgName, wi.ID)
+				sReq, _ := http.NewRequest("GET", sevenUrl, nil)
+				sReq.Header.Set("Authorization", "Bearer "+sevenPaceToken)
+				sResp, err := client.Do(sReq)
+				if err == nil && sResp.StatusCode == 200 {
+					var sData struct {
+						Data []struct {
+							Length int `json:"length"`
+							User struct {
+								Email string `json:"email"`
+							} `json:"user"`
+						} `json:"data"`
+					}
+					sBody, _ := io.ReadAll(sResp.Body)
+					json.Unmarshal(sBody, &sData)
+					
+					totalTime := 0
+					for _, l := range sData.Data {
+						// Only sum our own time, unless no email is configured
+						if cfg.User.Email == "" || strings.EqualFold(l.User.Email, cfg.User.Email) {
+							totalTime += l.Length
+						}
+					}
+					newTask.TotalSeconds = totalTime
+					newTask.SyncedSeconds = totalTime
+				}
+				if sResp != nil && sResp.Body != nil {
+					sResp.Body.Close()
+				}
 			}
 			
 			// Register in map so subsequent children can find it

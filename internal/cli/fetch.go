@@ -19,6 +19,10 @@ func newFetchCmd() *cobra.Command {
 			if adoPat == "" {
 				return fmt.Errorf("FATAL: TALLY_ADO_PAT environment variable is not set")
 			}
+			sevenPaceToken := os.Getenv("TALLY_7PACE_TOKEN")
+			if sevenPaceToken == "" {
+				sevenPaceToken = adoPat
+			}
 			
 			cfg, err := config.Load()
 			if err != nil {
@@ -32,7 +36,7 @@ func newFetchCmd() *cobra.Command {
 			app := core.NewApp(s)
 
 			fmt.Println("Connecting to Azure DevOps WIQL API...")
-			if err := app.Fetch(cfg, adoPat); err != nil {
+			if err := app.Fetch(cfg, adoPat, sevenPaceToken); err != nil {
 				return err
 			}
 			return nil
