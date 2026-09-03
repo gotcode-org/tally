@@ -236,7 +236,7 @@ func (m *MainModel) reloadList() {
 			}
 			if yNode == nil {
 				expanded := false
-				if val, ok := m.expandedState["folder:Archive:"+yStr]; ok { expanded = val }
+				if val, ok := m.expandedState["folder:"+yStr]; ok { expanded = val }
 				yNode = &ListItem{Title: yStr, Expanded: expanded}
 				archiveRoot.Children = append(archiveRoot.Children, yNode)
 			}
@@ -249,7 +249,7 @@ func (m *MainModel) reloadList() {
 			}
 			if mNode == nil {
 				expanded := false
-				if val, ok := m.expandedState["folder:Archive:"+mStr]; ok { expanded = val }
+				if val, ok := m.expandedState["folder:"+mStr]; ok { expanded = val }
 				mNode = &ListItem{Title: mStr, Expanded: expanded}
 				yNode.Children = append(yNode.Children, mNode)
 			}
@@ -262,7 +262,7 @@ func (m *MainModel) reloadList() {
 			}
 			if dNode == nil {
 				expanded := false
-				if val, ok := m.expandedState["folder:Archive:"+dStr]; ok { expanded = val }
+				if val, ok := m.expandedState["folder:"+dStr]; ok { expanded = val }
 				dNode = &ListItem{Title: dStr, Expanded: expanded}
 				mNode.Children = append(mNode.Children, dNode)
 			}
