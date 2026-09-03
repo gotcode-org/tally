@@ -286,7 +286,7 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 				continue
 			}
 
-			fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n", logEntry.Seconds, *t.ADOID)
+			fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n\n", logEntry.Seconds, *t.ADOID)
 			
 			logData := map[string]interface{}{
 				"timestamp":  logEntry.Timestamp.Format(time.RFC3339),
@@ -388,4 +388,97 @@ func parseMarkdownSections(body string) (description, acceptanceCriteria string)
 	}
 	
 	return strings.TrimSpace(descBuilder.String()), strings.TrimSpace(acBuilder.String())
+}
+
+// Fetch queries ADO for all work items assigned to the current user, and restores any missing local markdown files.
+func (a *App) Fetch(cfg *config.Config, adoPat string) error {
+	client := &http.Client{Timeout: 30 * time.Second}
+	
+	// WIQL query for everything assigned to me
+	query := `{"query": "Select [System.Id], [System.Title], [System.State], [System.WorkItemType] From WorkItems Where [System.AssignedTo] = @Me"}`
+	
+	url := fmt.Sprintf("%s/%s/_apis/wit/wiql?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), cfg.ADO.DefaultProject)
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer([]byte(query)))
+	req.Header.Set("Content-Type", "application/json")
+	req.SetBasicAuth("", adoPat)
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to hit WIQL endpoint: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	var wiqlResp struct {
+		WorkItems []struct {
+			ID int `json:"id"`
+		} `json:"workItems"`
+	}
+	
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("WIQL rejected (HTTP %d): %s", resp.StatusCode, string(body))
+	}
+	
+	if err := json.Unmarshal(body, &wiqlResp); err != nil {
+		return err
+	}
+	
+	// Load all existing tasks to see what we already have
+	tasks, _ := a.Store.ListTasks("")
+	existingADO := make(map[int]bool)
+	for _, t := range tasks {
+		if t.ADOID != nil {
+			existingADO[*t.ADOID] = true
+		}
+	}
+	
+	fmt.Printf("WIQL returned %d tasks assigned to you. Comparing against local files...\n", len(wiqlResp.WorkItems))
+	
+	restoredCount := 0
+	for _, wi := range wiqlResp.WorkItems {
+		if !existingADO[wi.ID] {
+			fmt.Printf("Restoring missing task ADO #%d...\n", wi.ID)
+			
+			// Fetch full details
+			detailUrl := fmt.Sprintf("%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), wi.ID)
+			req2, _ := http.NewRequest("GET", detailUrl, nil)
+			req2.SetBasicAuth("", adoPat)
+			
+			resp2, err := client.Do(req2)
+			if err != nil || resp2.StatusCode >= 400 {
+				continue
+			}
+			
+			var details struct {
+				Fields map[string]interface{} `json:"fields"`
+			}
+			dBody, _ := io.ReadAll(resp2.Body)
+			resp2.Body.Close()
+			json.Unmarshal(dBody, &details)
+			
+			title, _ := details.Fields["System.Title"].(string)
+			state, _ := details.Fields["System.State"].(string)
+			adoType, _ := details.Fields["System.WorkItemType"].(string)
+			
+			now := time.Now()
+			newID, _ := a.Store.GetNextID(now, false)
+			
+			adoIdVal := wi.ID
+			newTask := &Task{
+				ID: newID,
+				Title: title,
+				Status: TaskState(state),
+				ADOType: adoType,
+				ADOID: &adoIdVal,
+				CreatedAt: now,
+				UpdatedAt: now,
+			}
+			
+			a.Store.Save(newTask)
+			restoredCount++
+		}
+	}
+	
+	fmt.Printf("Successfully restored %d missing tasks from ADO!", restoredCount)
+	return nil
 }
