@@ -40,6 +40,7 @@ func Execute() {
 	rootCmd.AddCommand(newSyncCmd())
 	rootCmd.AddCommand(newFetchCmd())
 	rootCmd.AddCommand(newPushCmd())
+	rootCmd.AddCommand(newDebugTaskCmd())
 	rootCmd.AddCommand(newEditCmd())
 	rootCmd.AddCommand(newStateCmd())
 	rootCmd.AddCommand(newPointsCmd())
