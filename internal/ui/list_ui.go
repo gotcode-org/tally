@@ -119,6 +119,21 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.terminalHeight = msg.Height
 		return m, nil
 	case tea.KeyMsg:
+		if m.confirmingID != "" {
+			if msg.String() == "y" || msg.String() == "Y" {
+				id := m.confirmingID
+				m.confirmingID = ""
+				m.confirmingTitle = ""
+				return m, func() tea.Msg { return DeleteTaskMsg{ID: id} }
+			} else if msg.String() == "n" || msg.String() == "N" || msg.String() == "esc" {
+				m.confirmingID = ""
+				m.confirmingTitle = ""
+				return m, nil
+			} else if msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
