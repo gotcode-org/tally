@@ -68,6 +68,7 @@ type ListModel struct {
 	title          string
 	TimeStats      string
 	items          []*ListItem
+	cachedFlatRows []FlatRow
 	cursor         int
 	offset         int
 	terminalWidth  int
@@ -79,20 +80,22 @@ type ListModel struct {
 }
 
 func NewListModel(title string, items []*ListItem) ListModel {
-	return ListModel{
+	m := ListModel{
 		title:     title,
 		items:     items,
 		cursor:    0,
 		widthPct:  0.95,
 		heightPct: 0.95,
 	}
+	m.rebuildFlatRows()
+	return m
 }
 
 func (m ListModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m *ListModel) getFlatRows() []FlatRow {
+func (m *ListModel) rebuildFlatRows() {
 	var rows []FlatRow
 	var flatten func(items []*ListItem, depth int)
 	flatten = func(items []*ListItem, depth int) {
@@ -110,7 +113,11 @@ func (m *ListModel) getFlatRows() []FlatRow {
 		}
 	}
 	flatten(m.items, 0)
-	return rows
+	m.cachedFlatRows = rows
+}
+
+func (m *ListModel) getFlatRows() []FlatRow {
+	return m.cachedFlatRows
 }
 
 func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -212,6 +219,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(flatRows) > 0 {
 				row := flatRows[m.cursor]
 				row.Item.Expanded = !row.Item.Expanded
+				m.rebuildFlatRows()
 			}
 		}
 	}
