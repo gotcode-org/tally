@@ -40,7 +40,7 @@ func (a *App) AddTask(title string, adoType string, tags []string, isBacklog boo
 	task := &Task{
 		ID:        id,
 		Title:     title,
-		Status:    StateOpen,
+		Status:    StateNew,
 		Tags:      tags,
 		Recurrence: recurrence,
 		ParentID:   parentID,
@@ -260,7 +260,7 @@ func (a *App) ReconcileRecurringTasks() error {
 			newTask := &Task{
 				ID:          newID,
 				Title:       template.Title,
-				Status:      StateOpen,
+				Status:      StateNew,
 				Tags:        template.Tags,
 				CreatedAt:   now,
 				UpdatedAt:   now,

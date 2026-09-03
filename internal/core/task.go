@@ -25,7 +25,7 @@ import (
 type TaskState string
 
 const (
-	StateOpen   TaskState = "open"
+	StateNew    TaskState = "New"
 	StateActive TaskState = "active"
 	StatePaused TaskState = "paused"
 	StateClosed TaskState = "closed"
