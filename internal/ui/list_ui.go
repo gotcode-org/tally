@@ -55,6 +55,10 @@ type ListItem struct {
 	TypeColor    lipgloss.Color
 	Expanded     bool
 	Children     []*ListItem
+	
+	CachedWidth  int
+	CacheNormal  []string
+	CacheActive  []string
 }
 
 type FlatRow struct {
@@ -529,47 +533,58 @@ func (m ListModel) View() string {
 			continue
 		}
 		
-		titleCell := getRowTitle(row)
-		
-		rowStyle := MilestoneRowStyle
-		if row.Depth > 0 {
-			rowStyle = StoryRowStyle
+		if row.Item.CachedWidth != availableWidth || len(row.Item.CacheNormal) == 0 {
+			titleCell := getRowTitle(row)
+			rowStyle := MilestoneRowStyle
+			if row.Depth > 0 {
+				rowStyle = StoryRowStyle
+			}
+
+			computeRender := func(active bool) []string {
+				bgStyle := rowStyle
+				if active {
+					bgStyle = ActiveRowStyle
+				}
+				
+				var typeCell string
+				if row.Item.Type != "" {
+					tColor := row.Item.TypeColor
+					if active {
+						tColor = ThemeBase
+					}
+					typeCell = lipgloss.NewStyle().Foreground(tColor).Background(bgStyle.GetBackground()).Bold(true).Render(strings.ToUpper(row.Item.Type))
+				}
+				
+				statusCell := formatStatusCell(row.Item.Status, widths[2], active, bgStyle)
+
+				var progressCell string
+				if row.Item.TimeText != "" {
+					pColor := ThemeSubtext
+					if active {
+						pColor = ThemeBase
+					}
+					progressCell = lipgloss.NewStyle().Foreground(pColor).Background(bgStyle.GetBackground()).Render(row.Item.TimeText)
+				} else {
+					progressCell = lipgloss.NewStyle().Foreground(ThemeSubtext).Background(bgStyle.GetBackground()).Render("-")
+				}
+
+				idCell := row.Item.ID
+				if idCell == "" {
+					idCell = " "
+				}
+				return renderRow(titleCell, idCell, typeCell, statusCell, progressCell, widths, active, rowStyle)
+			}
+			
+			row.Item.CacheNormal = computeRender(false)
+			row.Item.CacheActive = computeRender(true)
+			row.Item.CachedWidth = availableWidth
 		}
 		
-		bgStyle := rowStyle
 		if isCursor {
-			bgStyle = ActiveRowStyle
-		}
-
-		var typeCell string
-		if row.Item.Type != "" {
-			tColor := row.Item.TypeColor
-			if isCursor {
-				tColor = ThemeBase
-			}
-			typeCell = lipgloss.NewStyle().Foreground(tColor).Background(bgStyle.GetBackground()).Bold(true).Render(strings.ToUpper(row.Item.Type))
-		}
-		
-		statusCell := formatStatusCell(row.Item.Status, widths[2], isCursor, bgStyle)
-
-		var progressCell string
-		if row.Item.TimeText != "" {
-			pColor := ThemeSubtext // Muted but readable on Overlay background
-			if isCursor {
-				pColor = ThemeBase // Dark text on blue active row
-			}
-			progressCell = lipgloss.NewStyle().Foreground(pColor).Background(bgStyle.GetBackground()).Render(row.Item.TimeText)
+			allLines = append(allLines, row.Item.CacheActive...)
 		} else {
-			progressCell = lipgloss.NewStyle().Foreground(ThemeSubtext).Background(bgStyle.GetBackground()).Render("-")
+			allLines = append(allLines, row.Item.CacheNormal...)
 		}
-
-		
-		idCell := row.Item.ID
-		if idCell == "" {
-			idCell = " "
-		}
-		
-		allLines = append(allLines, renderRow(titleCell, idCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle)...)
 	}
 
 	// Calculate scroll offset
