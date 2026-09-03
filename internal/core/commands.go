@@ -29,7 +29,7 @@ func (a *App) AddTask(title string, adoType string, tags []string, isBacklog boo
 	now := time.Now()
 
 	// 1. Generate the sequential local ID
-	id, err := a.Store.GetNextID(now, isBacklog, recurrence != "")
+	id, err := a.Store.GetNextID(now, recurrence != "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate task ID: %w", err)
 	}
@@ -47,6 +47,10 @@ func (a *App) AddTask(title string, adoType string, tags []string, isBacklog boo
 		CreatedAt: now,
 		UpdatedAt: now,
 		ADOType:   adoType,
+	}
+	
+	if isBacklog {
+		task.Status = "Backlog"
 	}
 	
 	if swimlane != "" {
@@ -152,7 +156,7 @@ func (a *App) StartTask(id string) error {
 
 	// Generate new ID for today
 	now := time.Now()
-	newID, err := a.Store.GetNextID(now, false, false)
+	newID, err := a.Store.GetNextID(now, false)
 	if err != nil {
 		// Try to recover by saving to old path?
 		return fmt.Errorf("failed to generate new ID: %w", err)
@@ -252,7 +256,7 @@ func (a *App) ReconcileRecurringTasks() error {
 		}
 
 		if shouldSpawn {
-			newID, err := a.Store.GetNextID(now, false, false)
+			newID, err := a.Store.GetNextID(now, false)
 			if err != nil {
 				continue
 			}

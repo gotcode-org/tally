@@ -27,7 +27,7 @@ type TaskStore interface {
 	Save(task *Task) error
 	Load(id string) (*Task, error)
 	Parse(path string) (*Task, error)
-	GetNextID(date time.Time, isBacklog bool, isRecurring bool) (string, error)
+	GetNextID(date time.Time, isRecurring bool) (string, error)
 	ListTasks(datePrefix string) ([]*Task, error)
 	GetTaskPath(id string) string
 	Delete(id string) error

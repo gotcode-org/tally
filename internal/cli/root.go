@@ -43,6 +43,7 @@ func Execute() {
 	rootCmd.AddCommand(newPointsCmd())
 	rootCmd.AddCommand(newUICmd())
 	rootCmd.AddCommand(newDebugCmd())
+	rootCmd.AddCommand(newMigrateCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

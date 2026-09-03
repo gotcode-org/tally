@@ -134,7 +134,7 @@ func (s *Store) Parse(path string) (*core.Task, error) {
 }
 
 // GetNextID scans the directory for a given date and generates the next sequential ID (e.g. 20260901.003).
-func (s *Store) GetNextID(date time.Time, isBacklog bool, isRecurring bool) (string, error) {
+func (s *Store) GetNextID(date time.Time, isRecurring bool) (string, error) {
 	year := date.Format("2006")
 	month := date.Format("01")
 	day := date.Format("02")
@@ -145,9 +145,6 @@ func (s *Store) GetNextID(date time.Time, isBacklog bool, isRecurring bool) (str
 	if isRecurring {
 		prefix = fmt.Sprintf("recur-%s%s%s", year, month, day)
 		dir = filepath.Join(s.BaseDir, "recurring")
-	} else if isBacklog {
-		prefix = fmt.Sprintf("backlog-%s%s%s", year, month, day)
-		dir = filepath.Join(s.BaseDir, "backlog")
 	} else {
 		prefix = fmt.Sprintf("%s%s%s", year, month, day)
 		dir = filepath.Join(s.BaseDir, year, month, day)
