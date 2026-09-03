@@ -68,7 +68,9 @@ func NewMainModel(app *core.App) *MainModel {
 func (m *MainModel) reloadList() {
 	// Capture current expansion state and cursor before wiping
 	var selectedID string
+	oldCursor := 0
 	if m.list.items != nil {
+		oldCursor = m.list.cursor
 		flat := m.list.getFlatRows()
 		if m.list.cursor >= 0 && m.list.cursor < len(flat) {
 			selectedID = flat[m.list.cursor].Item.ID
@@ -367,13 +369,23 @@ func (m *MainModel) reloadList() {
 	m.list.TimeStats = timeStatsStr
 	
 	// Restore cursor position
+	flat := m.list.getFlatRows()
+	found := false
 	if selectedID != "" {
-		flat := m.list.getFlatRows()
 		for i, row := range flat {
 			if row.Item.ID == selectedID {
 				m.list.cursor = i
+				found = true
 				break
 			}
+		}
+	}
+	// Fallback: if the item was deleted, try to put the cursor back where it roughly was
+	if !found && len(flat) > 0 {
+		if oldCursor >= len(flat) {
+			m.list.cursor = len(flat) - 1
+		} else if oldCursor >= 0 {
+			m.list.cursor = oldCursor
 		}
 	}
 	
