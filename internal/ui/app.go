@@ -222,10 +222,10 @@ func (m *MainModel) reloadList() {
 				archiveRoot = &ListItem{Title: "Archive", Expanded: expanded}
 			}
 			
-			// Group by year/month/day
-			yStr := t.CreatedAt.Format("2006")
-			mStr := t.CreatedAt.Format("January")
-			dStr := t.CreatedAt.Format("02 (Mon)")
+			// Group archived tasks by when they were last touched (closed)
+			yStr := t.UpdatedAt.Format("2006")
+			mStr := t.UpdatedAt.Format("January")
+			dStr := t.UpdatedAt.Format("02 (Mon)")
 			
 			var yNode, mNode, dNode *ListItem
 			for _, child := range archiveRoot.Children {
