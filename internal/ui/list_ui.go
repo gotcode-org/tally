@@ -188,7 +188,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m ListModel) renderHeader(widths []int) string {
 	cells := []string{}
-	headers := []string{"NAME", "TYPE", "STATUS", "TIME"}
+	headers := []string{"ID", "NAME", "TYPE", "STATUS", "TIME"}
 
 	for i, col := range headers {
 		w := widths[i]
@@ -288,7 +288,7 @@ func getRowTitle(row FlatRow) string {
 	return indent + icon + row.Item.Title
 }
 
-func renderRow(title, typeStr, statusCell, progress string, widths []int, isCursor bool, rowStyle lipgloss.Style) []string {
+func renderRow(idStr, title, typeStr, statusCell, progress string, widths []int, isCursor bool, rowStyle lipgloss.Style) []string {
 	formatColLeftRaw := func(txt string, w int) []string {
 		runes := []rune(txt)
 		if len(runes) <= w {
@@ -298,10 +298,19 @@ func renderRow(title, typeStr, statusCell, progress string, widths []int, isCurs
 		
 		var lines []string
 		indentStr := ""
-		dashIndex := strings.Index(txt, " - ")
-		if dashIndex != -1 {
-			indentLen := lipgloss.Width(txt[:dashIndex+3])
-			indentStr = strings.Repeat(" ", indentLen)
+		// Find where the actual text starts by skipping leading spaces and tree icons
+		textStartIndex := 0
+		runes_txt := []rune(txt)
+		for i, r := range runes_txt {
+			if r != ' ' && r != '▼' && r != '▶' && r != '↻' {
+				textStartIndex = i
+				break
+			}
+		}
+		
+		// If there is an icon, we usually want to indent past it + 1 space
+		if textStartIndex > 0 {
+			indentStr = strings.Repeat(" ", textStartIndex)
 		} else {
 			indentStr = "    "
 		}
@@ -432,17 +441,23 @@ func (m ListModel) View() string {
 	headerWidth := targetWidth
 	
 	// Subtract the width of prefix (2) and separators (3 * 3 = 9) = 11 total static chars
-	availableWidth := headerWidth - 11
-	if availableWidth < 20 {
-		availableWidth = 20
+	availableWidth := headerWidth - 14 // 4 separators = 12 chars + 2 prefix = 14
+	if availableWidth < 30 {
+		availableWidth = 30
 	}
 	
-	w0 := int(float64(availableWidth) * 0.45)
-	w1 := int(float64(availableWidth) * 0.15)
-	w2 := int(float64(availableWidth) * 0.20)
-	w3 := availableWidth - (w0 + w1 + w2) // Soak up any float truncation remainder
+	wID := 13 // E.g., "20260903.001" is 12 chars
+	remWidth := availableWidth - wID
+	if remWidth < 10 {
+		remWidth = 10
+	}
+	
+	wName := int(float64(remWidth) * 0.45)
+	wType := int(float64(remWidth) * 0.15)
+	wStatus := int(float64(remWidth) * 0.20)
+	wTime := remWidth - (wName + wType + wStatus)
 
-	widths := []int{w0, w1, w2, w3}
+	widths := []int{wID, wName, wType, wStatus, wTime}
 
 	flatRows := m.getFlatRows()
 	var allLines []string
@@ -493,7 +508,13 @@ func (m ListModel) View() string {
 			progressCell = lipgloss.NewStyle().Foreground(ThemeSubtext).Background(bgStyle.GetBackground()).Render("-")
 		}
 
-		allLines = append(allLines, renderRow(titleCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle)...)
+		
+		idCell := row.Item.ID
+		if idCell == "" {
+			idCell = " "
+		}
+		
+		allLines = append(allLines, renderRow(idCell, titleCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle)...)
 	}
 
 	// Calculate scroll offset
@@ -515,7 +536,7 @@ func (m ListModel) View() string {
 	}
 
 	for len(listSections) < visibleRows {
-		listSections = append(listSections, renderRow("", "", "", "", widths, false, lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeOverlay))[0])
+		listSections = append(listSections, renderRow("", "", "", "", "", widths, false, lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeOverlay))[0])
 	}
 
 	paddedList := lipgloss.NewStyle().

@@ -119,7 +119,7 @@ func (m *MainModel) reloadList() {
 			timeStr = fmt.Sprintf("%.1fh", hours)
 		}
 
-		titleStr := t.ID + " - " + t.Title
+		titleStr := t.Title
 		if t.Recurrence != "" {
 			titleStr = "↻ " + titleStr
 		}
