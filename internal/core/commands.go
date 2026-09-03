@@ -25,7 +25,7 @@ import (
 )
 
 // AddTask contains the pure business logic for creating a new task.
-func (a *App) AddTask(title string, adoType string, tags []string, isBacklog bool, recurrence string, parentID string, swimlane string) (*Task, error) {
+func (a *App) AddTask(title string, adoType string, tags []string, recurrence string, parentID string, swimlane string) (*Task, error) {
 	now := time.Now()
 
 	// 1. Generate the sequential local ID
@@ -47,10 +47,6 @@ func (a *App) AddTask(title string, adoType string, tags []string, isBacklog boo
 		CreatedAt: now,
 		UpdatedAt: now,
 		ADOType:   adoType,
-	}
-	
-	if isBacklog {
-		task.Status = "Backlog"
 	}
 	
 	if swimlane != "" {

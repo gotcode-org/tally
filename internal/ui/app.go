@@ -405,7 +405,6 @@ func (m *MainModel) buildCreateForm(parentID string) {
 	f.AddTextBox("title", "Title", "Enter task title...", "")
 	f.AddSelector("type", "Type", []string{"Task", "Story", "Technical Story", "Bug"}, "")
 	f.AddTextBox("tags", "Tags", "comma separated (e.g. urgent, backend)", "")
-	f.AddBoolean("backlog", "Backlog?", "")
 	f.AddSelector("recur", "Recurrence", []string{"", "daily", "weekdays", "weekly", "monthly"}, "")
 	
 	if cfg, err := config.Load(); err == nil && len(cfg.ADO.Swimlanes) > 0 {
@@ -428,7 +427,7 @@ func (m *MainModel) buildCreateForm(parentID string) {
 			}
 
 			if title != "" {
-				m.coreApp.AddTask(title, adoType, tags, form.GetString("backlog") == "True", form.GetString("recur"), parentID, form.GetString("swimlane"))
+				m.coreApp.AddTask(title, adoType, tags, form.GetString("recur"), parentID, form.GetString("swimlane"))
 			}
 			return FormSubmitMsg{}
 		}

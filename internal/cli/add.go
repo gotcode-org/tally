@@ -27,7 +27,6 @@ import (
 func newAddCmd() *cobra.Command {
 	var adoType string
 	var tags []string
-	var isBacklog bool
 	var recurrence string
 	var parentID string
 	var swimlane string
@@ -45,7 +44,7 @@ func newAddCmd() *cobra.Command {
 			app := core.NewApp(s)
 
 			// Execute business logic
-			task, err := app.AddTask(args[0], adoType, tags, isBacklog, recurrence, parentID, swimlane)
+			task, err := app.AddTask(args[0], adoType, tags, recurrence, parentID, swimlane)
 			if err != nil {
 				return err
 			}
@@ -58,7 +57,6 @@ func newAddCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&adoType, "type", "", "ADO Work Item Type (e.g., Story, Bug)")
 	cmd.Flags().StringSliceVar(&tags, "tags", []string{}, "Comma-separated list of tags")
-	cmd.Flags().BoolVar(&isBacklog, "backlog", false, "Send the task directly to the backlog")
 	cmd.Flags().StringVar(&recurrence, "recur", "", "Set a recurrence rule (e.g., daily)")
 	cmd.Flags().StringVar(&parentID, "parent", "", "The Tally ID of the parent Story")
 	cmd.Flags().StringVar(&swimlane, "swimlane", "", "The swimlane to put the task in")
