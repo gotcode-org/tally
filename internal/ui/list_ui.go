@@ -577,13 +577,7 @@ func (m ListModel) View() string {
 		listSections = append(listSections, renderRow("", "", "", "", "", widths, false, lipgloss.NewStyle().Foreground(ThemeBase).Background(ThemeOverlay))[0])
 	}
 	
-	if m.confirmingID != "" {
-		prompt := lipgloss.NewStyle().Foreground(ThemeRed).Background(ThemeBase).Bold(true).Render(
-			fmt.Sprintf(" ⚠ Are you sure you want to permanently delete '%s'? (y/N) ", m.confirmingTitle))
-		if len(listSections) > 0 {
-			listSections[len(listSections)-1] = prompt
-		}
-	}
+
 
 	paddedList := lipgloss.NewStyle().
 		Background(ThemeOverlay).
@@ -604,6 +598,10 @@ func (m ListModel) View() string {
 	footerContent := helpStr
 	if m.TimeStats != "" {
 		footerContent = m.TimeStats + "\n" + helpStr
+	}
+	
+	if m.confirmingID != "" {
+		footerContent = fmt.Sprintf("⚠ ARE YOU SURE YOU WANT TO PERMANENTLY DELETE '%s'? (y/N)", strings.ToUpper(m.confirmingTitle))
 	}
 	
 	footer := lipgloss.NewStyle().Width(headerWidth).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(footerContent)
