@@ -517,30 +517,40 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 				sReq, _ := http.NewRequest("GET", sevenUrl, nil)
 				sReq.Header.Set("Authorization", "Bearer "+sevenPaceToken)
 				sResp, err := client.Do(sReq)
-				if err == nil && sResp.StatusCode == 200 {
-					var sData struct {
-						Data []struct {
+				if err == nil {
+					sBody, _ := io.ReadAll(sResp.Body)
+					if sResp.StatusCode == 200 {
+						type WorkLog struct {
 							Length int `json:"length"`
 							User struct {
 								Email string `json:"email"`
 							} `json:"user"`
-						} `json:"data"`
-					}
-					sBody, _ := io.ReadAll(sResp.Body)
-					json.Unmarshal(sBody, &sData)
-					
-					totalTime := 0
-					for _, l := range sData.Data {
-						// Only sum our own time, unless no email is configured
-						if cfg.User.Email == "" || strings.EqualFold(l.User.Email, cfg.User.Email) {
-							totalTime += l.Length
 						}
+						
+						var sData struct {
+							Data  []WorkLog `json:"data"`
+							Items []WorkLog `json:"items"`
+							Value []WorkLog `json:"value"`
+						}
+						
+						json.Unmarshal(sBody, &sData)
+						
+						totalTime := 0
+						allLogs := append(sData.Data, append(sData.Items, sData.Value...)...)
+						
+						for _, l := range allLogs {
+							if cfg.User.Email == "" || strings.EqualFold(l.User.Email, cfg.User.Email) {
+								totalTime += l.Length
+							}
+						}
+						newTask.TotalSeconds = totalTime
+						newTask.SyncedSeconds = totalTime
+					} else {
+						fmt.Printf("  -> Warning: Failed to fetch 7pace time (HTTP %d): %s\n", sResp.StatusCode, string(sBody))
 					}
-					newTask.TotalSeconds = totalTime
-					newTask.SyncedSeconds = totalTime
-				}
-				if sResp != nil && sResp.Body != nil {
 					sResp.Body.Close()
+				} else {
+					fmt.Printf("  -> Warning: Network error fetching 7pace time: %v\n", err)
 				}
 			}
 			
