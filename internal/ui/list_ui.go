@@ -459,22 +459,12 @@ func (m ListModel) View() string {
 		availableWidth = 30
 	}
 	
-	// Fixed widths for auxiliary columns to keep them crisp
-	wID := 24
-	wTime := 8
-	wType := 10
-	wStatus := 16
-	
-	wName := availableWidth - (wID + wTime + wType + wStatus)
-	
-	// If the terminal is squashed to an extreme degree, fallback to proportional percentages
-	if wName < 20 {
-		wName = int(float64(availableWidth) * 0.45)
-		wID = int(float64(availableWidth) * 0.20)
-		wType = int(float64(availableWidth) * 0.12)
-		wStatus = int(float64(availableWidth) * 0.15)
-		wTime = availableWidth - (wName + wID + wType + wStatus)
-	}
+	// Proportional widths so the grid stays balanced across different monitor sizes
+	wName := int(float64(availableWidth) * 0.45)
+	wID := int(float64(availableWidth) * 0.22)
+	wType := int(float64(availableWidth) * 0.10)
+	wStatus := int(float64(availableWidth) * 0.15)
+	wTime := availableWidth - (wName + wID + wType + wStatus) // Absorbs the remaining ~8%
 
 	widths := []int{wName, wID, wType, wStatus, wTime}
 
