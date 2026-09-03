@@ -151,7 +151,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, func() tea.Msg { return LogTimeMsg{ID: row.Item.ID} }
 				}
 			}
-		case "x":
+		case "X":
 			flatRows := m.getFlatRows()
 			if len(flatRows) > 0 {
 				row := flatRows[m.cursor]
