@@ -460,8 +460,8 @@ func (m ListModel) View() string {
 	}
 	
 	// Proportional widths so the grid stays balanced across different monitor sizes
-	wName := int(float64(availableWidth) * 0.45)
-	wID := int(float64(availableWidth) * 0.22)
+	wName := int(float64(availableWidth) * 0.50)
+	wID := int(float64(availableWidth) * 0.17)
 	wType := int(float64(availableWidth) * 0.10)
 	wStatus := int(float64(availableWidth) * 0.15)
 	wTime := availableWidth - (wName + wID + wType + wStatus) // Absorbs the remaining ~8%
