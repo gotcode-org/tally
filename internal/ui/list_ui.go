@@ -188,7 +188,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m ListModel) renderHeader(widths []int) string {
 	cells := []string{}
-	headers := []string{"ID", "NAME", "TYPE", "STATUS", "TIME"}
+	headers := []string{"NAME", "ID", "TYPE", "STATUS", "TIME"}
 
 	for i, col := range headers {
 		w := widths[i]
@@ -288,7 +288,7 @@ func getRowTitle(row FlatRow) string {
 	return indent + icon + row.Item.Title
 }
 
-func renderRow(idStr, title, typeStr, statusCell, progress string, widths []int, isCursor bool, rowStyle lipgloss.Style) []string {
+func renderRow(title, idStr, typeStr, statusCell, progress string, widths []int, isCursor bool, rowStyle lipgloss.Style) []string {
 	formatColLeftRaw := func(txt string, w int) []string {
 		runes := []rune(txt)
 		if len(runes) <= w {
@@ -394,11 +394,11 @@ func renderRow(idStr, title, typeStr, statusCell, progress string, widths []int,
 		rowStyle = ActiveRowStyle
 	}
 
-	c0Lines := formatColLeftRaw(idStr, widths[0])
-	c1Lines := formatColLeftRaw(title, widths[1])
-	c2 := formatColCenter(typeStr, widths[2])
-	c3 := formatColCenter(statusCell, widths[3])
-	c4 := formatColLeftANSI(progress, widths[4])
+	c0Lines := formatColLeftRaw(title, widths[0])
+	c1Cell := formatColLeftRaw(idStr, widths[1])[0]
+	c2Cell := formatColCenter(typeStr, widths[2])
+	c3Cell := formatColCenter(statusCell, widths[3])
+	c4Cell := formatColLeftANSI(progress, widths[4])
 
 	prefix := "  "
 	if isCursor {
@@ -409,46 +409,30 @@ func renderRow(idStr, title, typeStr, statusCell, progress string, widths []int,
 	emptyPrefix := rowStyle.Render("  ")
 	separator := lipgloss.NewStyle().Foreground(ThemeSubtext).Background(rowStyle.GetBackground()).Render(" │ ")
 	
-
 	var result []string
 	
-	// Max lines needed
 	maxLines := len(c0Lines)
-	if len(c1Lines) > maxLines {
-		maxLines = len(c1Lines)
-	}
-	
 	for i := 0; i < maxLines; i++ {
-		c0Line := ""
-		if i < len(c0Lines) {
-			c0Line = c0Lines[i]
-		} else {
-			c0Line = formatColLeftRaw("", widths[0])[0]
-		}
-		
-		c1Line := ""
-		if i < len(c1Lines) {
-			c1Line = c1Lines[i]
-		} else {
-			c1Line = formatColLeftRaw("", widths[1])[0]
-		}
+		c0Line := c0Lines[i]
 		
 		pref := emptyPrefix
 		if i == 0 {
 			pref = prefix
 		}
 		
-		c2Cell := formatColCenter("", widths[2])
-		c3Cell := formatColCenter("", widths[3])
-		c4Cell := formatColLeftANSI("", widths[4])
+		c1Line := formatColLeftRaw("", widths[1])[0]
+		c2Line := formatColCenter("", widths[2])
+		c3Line := formatColCenter("", widths[3])
+		c4Line := formatColLeftANSI("", widths[4])
 		
 		if i == 0 {
-			c2Cell = c2
-			c3Cell = c3
-			c4Cell = c4
+			c1Line = c1Cell
+			c2Line = c2Cell
+			c3Line = c3Cell
+			c4Line = c4Cell
 		}
 		
-		line := pref + c0Line + separator + c1Line + separator + c2Cell + separator + c3Cell + separator + c4Cell
+		line := pref + c0Line + separator + c1Line + separator + c2Line + separator + c3Line + separator + c4Line
 		result = append(result, line)
 	}
 
@@ -475,7 +459,7 @@ func (m ListModel) View() string {
 		availableWidth = 30
 	}
 	
-	wID := 13 // E.g., "20260903.001" is 12 chars
+	wID := 14 // E.g., "20260903.001" is 12 chars
 	remWidth := availableWidth - wID
 	if remWidth < 10 {
 		remWidth = 10
@@ -486,7 +470,7 @@ func (m ListModel) View() string {
 	wStatus := int(float64(remWidth) * 0.20)
 	wTime := remWidth - (wName + wType + wStatus)
 
-	widths := []int{wID, wName, wType, wStatus, wTime}
+	widths := []int{wName, wID, wType, wStatus, wTime}
 
 	flatRows := m.getFlatRows()
 	var allLines []string
@@ -543,7 +527,7 @@ func (m ListModel) View() string {
 			idCell = " "
 		}
 		
-		allLines = append(allLines, renderRow(idCell, titleCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle)...)
+		allLines = append(allLines, renderRow(titleCell, idCell, typeCell, statusCell, progressCell, widths, isCursor, rowStyle)...)
 	}
 
 	// Calculate scroll offset
