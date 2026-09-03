@@ -473,6 +473,9 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 			var spPtr *float64
 			if spVal, ok := details.Fields["Microsoft.VSTS.Scheduling.StoryPoints"].(float64); ok {
 				spPtr = &spVal
+			} else {
+				defaultSP := 1.0
+				spPtr = &defaultSP
 			}
 			
 			createdStr, _ := details.Fields["System.CreatedDate"].(string)
@@ -630,6 +633,9 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 			var spPtr *float64
 			if spVal, ok := details.Fields["Microsoft.VSTS.Scheduling.StoryPoints"].(float64); ok {
 				spPtr = &spVal
+			} else {
+				defaultSP := 1.0
+				spPtr = &defaultSP
 			}
 			
 			createdStr, _ := details.Fields["System.CreatedDate"].(string)
