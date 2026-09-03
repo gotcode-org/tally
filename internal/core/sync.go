@@ -538,6 +538,16 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 						totalTime := 0
 						allLogs := append(sData.Data, append(sData.Items, sData.Value...)...)
 						
+						if len(allLogs) == 0 {
+							// Try raw map to see if it's returning something unexpected
+							var raw map[string]interface{}
+							json.Unmarshal(sBody, &raw)
+							fmt.Printf("  -> [DEBUG] 7pace API returned 200 but no time logs found. Raw payload keys: %v\n", raw)
+							if cfg.ADO.Debug {
+								fmt.Printf("  -> [DEBUG] Full 7pace payload: %s\n", string(sBody))
+							}
+						}
+						
 						for _, l := range allLogs {
 							if cfg.User.Email == "" || strings.EqualFold(l.User.Email, cfg.User.Email) {
 								totalTime += l.Length
