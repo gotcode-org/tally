@@ -45,6 +45,7 @@ type Config struct {
 	SevenPace struct {
 		ActivityID string            `yaml:"default_activity_id"`
 		Activities map[string]string `yaml:"activities,omitempty"`
+		Email      string            `yaml:"email,omitempty"`
 	} `yaml:"7pace"`
 
 	UI struct {

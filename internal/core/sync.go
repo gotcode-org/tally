@@ -550,10 +550,15 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 						
 						for _, l := range allLogs {
 							fmt.Printf("  -> [DEBUG] Found 7pace log for user email: '%s' (%d seconds)\n", l.User.Email, l.Length)
-							if cfg.User.Email == "" || strings.EqualFold(l.User.Email, cfg.User.Email) {
+							targetEmail := cfg.SevenPace.Email
+							if targetEmail == "" {
+								targetEmail = cfg.User.Email
+							}
+							
+							if targetEmail == "" || strings.EqualFold(l.User.Email, targetEmail) {
 								totalTime += l.Length
 							} else {
-								fmt.Printf("  -> [DEBUG] Ignoring time because config email is '%s' but log email is '%s'\n", cfg.User.Email, l.User.Email)
+								fmt.Printf("  -> [DEBUG] Ignoring time because config email is '%s' but log email is '%s'\n", targetEmail, l.User.Email)
 							}
 						}
 						newTask.TotalSeconds = totalTime
