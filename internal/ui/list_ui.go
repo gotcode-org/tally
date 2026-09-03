@@ -394,10 +394,11 @@ func renderRow(idStr, title, typeStr, statusCell, progress string, widths []int,
 		rowStyle = ActiveRowStyle
 	}
 
-	c1Lines := formatColLeftRaw(title, widths[0])
-	c2 := formatColCenter(typeStr, widths[1])
-	c3 := formatColCenter(statusCell, widths[2])
-	c4 := formatColLeftANSI(progress, widths[3])
+	c0Lines := formatColLeftRaw(idStr, widths[0])
+	c1Lines := formatColLeftRaw(title, widths[1])
+	c2 := formatColCenter(typeStr, widths[2])
+	c3 := formatColCenter(statusCell, widths[3])
+	c4 := formatColLeftANSI(progress, widths[4])
 
 	prefix := "  "
 	if isCursor {
@@ -407,19 +408,47 @@ func renderRow(idStr, title, typeStr, statusCell, progress string, widths []int,
 	
 	emptyPrefix := rowStyle.Render("  ")
 	separator := lipgloss.NewStyle().Foreground(ThemeSubtext).Background(rowStyle.GetBackground()).Render(" │ ")
-	emptySeparator := lipgloss.NewStyle().Foreground(ThemeSubtext).Background(rowStyle.GetBackground()).Render(" │ ")
+	
 
 	var result []string
 	
-	firstLine := prefix + c1Lines[0] + separator + c2 + separator + c3 + separator + c4
-	result = append(result, firstLine)
+	// Max lines needed
+	maxLines := len(c0Lines)
+	if len(c1Lines) > maxLines {
+		maxLines = len(c1Lines)
+	}
 	
-	c2Empty := formatColCenter("", widths[1])
-	c3Empty := formatColCenter("", widths[2])
-	c4Empty := formatColLeftANSI("", widths[3])
-	
-	for i := 1; i < len(c1Lines); i++ {
-		line := emptyPrefix + c1Lines[i] + emptySeparator + c2Empty + emptySeparator + c3Empty + emptySeparator + c4Empty
+	for i := 0; i < maxLines; i++ {
+		c0Line := ""
+		if i < len(c0Lines) {
+			c0Line = c0Lines[i]
+		} else {
+			c0Line = formatColLeftRaw("", widths[0])[0]
+		}
+		
+		c1Line := ""
+		if i < len(c1Lines) {
+			c1Line = c1Lines[i]
+		} else {
+			c1Line = formatColLeftRaw("", widths[1])[0]
+		}
+		
+		pref := emptyPrefix
+		if i == 0 {
+			pref = prefix
+		}
+		
+		c2Cell := formatColCenter("", widths[2])
+		c3Cell := formatColCenter("", widths[3])
+		c4Cell := formatColLeftANSI("", widths[4])
+		
+		if i == 0 {
+			c2Cell = c2
+			c3Cell = c3
+			c4Cell = c4
+		}
+		
+		line := pref + c0Line + separator + c1Line + separator + c2Cell + separator + c3Cell + separator + c4Cell
 		result = append(result, line)
 	}
 
