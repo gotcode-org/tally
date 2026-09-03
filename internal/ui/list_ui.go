@@ -459,16 +459,22 @@ func (m ListModel) View() string {
 		availableWidth = 30
 	}
 	
-	wID := 14 // E.g., "20260903.001" is 12 chars
-	remWidth := availableWidth - wID
-	if remWidth < 10 {
-		remWidth = 10
-	}
+	// Fixed widths for auxiliary columns to keep them crisp
+	wID := 18
+	wTime := 8
+	wType := 14
+	wStatus := 16
 	
-	wName := int(float64(remWidth) * 0.45)
-	wType := int(float64(remWidth) * 0.15)
-	wStatus := int(float64(remWidth) * 0.20)
-	wTime := remWidth - (wName + wType + wStatus)
+	wName := availableWidth - (wID + wTime + wType + wStatus)
+	
+	// If the terminal is squashed to an extreme degree, fallback to proportional percentages
+	if wName < 20 {
+		wName = int(float64(availableWidth) * 0.45)
+		wID = int(float64(availableWidth) * 0.20)
+		wType = int(float64(availableWidth) * 0.12)
+		wStatus = int(float64(availableWidth) * 0.15)
+		wTime = availableWidth - (wName + wID + wType + wStatus)
+	}
 
 	widths := []int{wName, wID, wType, wStatus, wTime}
 
