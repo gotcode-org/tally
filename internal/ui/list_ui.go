@@ -218,6 +218,25 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor < len(m.getFlatRows())-1 {
 				m.cursor++
 			}
+		case "pgup":
+			visibleRows := m.terminalHeight - 8
+			if visibleRows < 1 {
+				visibleRows = 1
+			}
+			m.cursor -= visibleRows
+			if m.cursor < 0 {
+				m.cursor = 0
+			}
+		case "pgdown":
+			visibleRows := m.terminalHeight - 8
+			if visibleRows < 1 {
+				visibleRows = 1
+			}
+			flatRows := m.getFlatRows()
+			m.cursor += visibleRows
+			if len(flatRows) > 0 && m.cursor >= len(flatRows) {
+				m.cursor = len(flatRows) - 1
+			}
 		case " ":
 			flatRows := m.getFlatRows()
 			if len(flatRows) > 0 {
