@@ -1,0 +1,206 @@
+}
+
+func (m *MainModel) reloadList() {
+	// Capture current expansion state and cursor before wiping
+	var selectedID string
+	if m.list.items != nil {
+		flat := m.list.getFlatRows()
+		if m.list.cursor >= 0 && m.list.cursor < len(flat) {
+			selectedID = flat[m.list.cursor].Item.ID
+		}
+		
+		var captureState func(items []*ListItem)
+		captureState = func(items []*ListItem) {
+			for _, item := range items {
+				// Use ID if available, otherwise fallback to Title (for folders)
+				key := item.ID
+				if key == "" {
+					key = "folder:" + item.Title
+				}
+				m.expandedState[key] = item.Expanded
+				captureState(item.Children)
+			}
+		}
+		captureState(m.list.items)
+	}
+
+	tasks, _ := m.coreApp.Store.ListTasks("")
+
+	// Reverse tasks so newest are at the top
+	for i, j := 0, len(tasks)-1; i < j; i, j = i+1, j-1 {
+		tasks[i], tasks[j] = tasks[j], tasks[i]
+	}
+
+	var items []*ListItem
+	var lastYear, lastMonth, lastDay *ListItem
+	var todayNode *ListItem
+	var backlogNode *ListItem
+	var templatesNode *ListItem
+	
+	// 1. Map out all task ListItems so we can nest children easily
+	itemMap := make(map[string]*ListItem)
+	
+	// 2. Pre-generate all ListItems
+	for _, t := range tasks {
+		c := ThemeBlue
+		if strings.Contains(strings.ToLower(t.ADOType), "story") {
+			c = ThemeMauve
+		} else if strings.Contains(strings.ToLower(t.ADOType), "bug") {
+			c = ThemeRed
+		}
+
+		timeStr := ""
+		if t.TotalSeconds > 0 {
+			hours := float64(t.TotalSeconds) / 3600.0
+			timeStr = fmt.Sprintf("%.1fh", hours)
+		}
+
+		titleStr := t.Title
+		if t.Recurrence != "" {
+			titleStr = "↻ " + titleStr
+		}
+
+		expanded := true
+		if val, exists := m.expandedState[t.ID]; exists {
+			expanded = val
+		}
+
+		itemMap[t.ID] = &ListItem{
+			ID:        t.ID,
+			Title:     titleStr,
+			Type:      t.ADOType,
+			Status:    string(t.Status),
+			TimeText:  timeStr,
+			TypeColor: c,
+			Expanded:  expanded, // keep children visible by default or use captured state
+		}
+	}
+	
+	// 3. Nest children into parents, and build a list of top-level nodes
+	var topLevelTasks []*core.Task
+	for _, t := range tasks {
+		if t.ParentID != "" {
+			// Find parent in the map
+			if parentNode, exists := itemMap[t.ParentID]; exists {
+				// Attach this child to the parent!
+				parentNode.Children = append(parentNode.Children, itemMap[t.ID])
+			} else {
+				// Parent is missing (maybe deleted?), render as top-level fallback
+				topLevelTasks = append(topLevelTasks, t)
+			}
+		} else {
+			// No parent, so it's a top-level node
+			topLevelTasks = append(topLevelTasks, t)
+		}
+	}
+
+	for _, t := range topLevelTasks {
+		taskItem := itemMap[t.ID]
+
+		// Intercept Templates so they skip chronological binning
+		if strings.HasPrefix(t.ID, "recur-") {
+			if templatesNode == nil {
+				// Keep it collapsed by default so it doesn't clutter the UI
+				expanded := false
+			if val, ok := m.expandedState["folder:Templates"]; ok { expanded = val }
+			templatesNode = &ListItem{Title: "Templates", Expanded: expanded} 
+			}
+			templatesNode.Children = append(templatesNode.Children, taskItem)
+			continue
+		}
+
+		// Intercept Backlog tasks so they skip chronological binning
+		if strings.HasPrefix(t.ID, "backlog-") {
+			if backlogNode == nil {
+				expanded := false
+			if val, ok := m.expandedState["folder:Backlog"]; ok { expanded = val }
+			backlogNode = &ListItem{Title: "Backlog", Expanded: expanded}
+			}
+			backlogNode.Children = append(backlogNode.Children, taskItem)
+			continue
+		}
+
+		// Intercept Today's tasks
+		now := time.Now()
+		isToday := t.CreatedAt.Year() == now.Year() && t.CreatedAt.Month() == now.Month() && t.CreatedAt.Day() == now.Day()
+		if isToday {
+			if todayNode == nil {
+				expanded := true
+			if val, ok := m.expandedState["folder:Today"]; ok { expanded = val }
+			todayNode = &ListItem{Title: "Today", Expanded: expanded}
+			}
+			todayNode.Children = append(todayNode.Children, taskItem)
+			continue
+		}
+
+		yStr := t.CreatedAt.Format("2006")
+		mStr := t.CreatedAt.Format("January")
+		dStr := t.CreatedAt.Format("02 (Mon)")
+		
+		if lastYear == nil || lastYear.Title != yStr {
+			expanded := false
+		if val, ok := m.expandedState["folder:"+yStr]; ok { expanded = val }
+		lastYear = &ListItem{Title: yStr, Expanded: expanded}
+			items = append(items, lastYear)
+			lastMonth = nil // Reset month and day
+			lastDay = nil
+		}
+		
+		if lastMonth == nil || lastMonth.Title != mStr {
+			expanded := false
+		if val, ok := m.expandedState["folder:"+mStr]; ok { expanded = val }
+		lastMonth = &ListItem{Title: mStr, Expanded: expanded}
+			lastYear.Children = append(lastYear.Children, lastMonth)
+			lastDay = nil
+		}
+		
+		if lastDay == nil || lastDay.Title != dStr {
+			expanded := false
+		if val, ok := m.expandedState["folder:"+dStr]; ok { expanded = val }
+		lastDay = &ListItem{Title: dStr, Expanded: expanded}
+			lastMonth.Children = append(lastMonth.Children, lastDay)
+		}
+		
+		lastDay.Children = append(lastDay.Children, taskItem)
+	}
+
+	// Build the final ordered list
+	var finalItems []*ListItem
+	
+	if todayNode != nil {
+		finalItems = append(finalItems, todayNode)
+	}
+	
+	// Append the historical Year/Month/Day tree
+	finalItems = append(finalItems, items...)
+	
+	if backlogNode != nil {
+		finalItems = append(finalItems, backlogNode)
+	}
+	
+	if templatesNode != nil {
+		finalItems = append(finalItems, templatesNode)
+	}
+	
+	items = finalItems
+
+	
+	// Calculate Time Stats
+	now := time.Now()
+	var daySec, weekSec, monthSec, yearSec int
+	
+	// Determine the start of the ISO week (Monday)
+	offset := int(time.Monday - now.Weekday())
+	if offset > 0 {
+		offset = -6
+	}
+	startOfWeek := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, offset)
+	
+	for _, t := range tasks {
+		// Calculate granular time logs
+		for _, log := range t.TimeLogs {
+			if log.Timestamp.Year() == now.Year() {
+				yearSec += log.Seconds
+				if log.Timestamp.Month() == now.Month() {
+					monthSec += log.Seconds
+					if log.Timestamp.Day() == now.Day() {

@@ -23,6 +23,7 @@ import (
 	"gotcode.org/tally/internal/config"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -96,10 +97,10 @@ func (m *MainModel) reloadList() {
 	}
 
 	var items []*ListItem
-	var lastYear, lastMonth, lastDay *ListItem
-	var todayNode *ListItem
-	var backlogNode *ListItem
-	var templatesNode *ListItem
+	
+	
+	
+	
 	
 	// 1. Map out all task ListItems so we can nest children easily
 	itemMap := make(map[string]*ListItem)
@@ -158,90 +159,149 @@ func (m *MainModel) reloadList() {
 		}
 	}
 
+	cfg, _ := config.Load()
+	var dashStates []string
+	var archiveStates []string
+	
+	if cfg != nil && len(cfg.UI.DashboardStates) > 0 {
+		dashStates = cfg.UI.DashboardStates
+	} else {
+		dashStates = []string{"New", "Active", "In Progress", "Backlog"}
+	}
+	
+	if cfg != nil && len(cfg.UI.ArchiveStates) > 0 {
+		archiveStates = cfg.UI.ArchiveStates
+	} else {
+		archiveStates = []string{"Done", "Closed", "Removed"}
+	}
+
+	isArchive := func(s string) bool {
+		for _, as := range archiveStates {
+			if strings.EqualFold(s, as) {
+				return true
+			}
+		}
+		return false
+	}
+	
+	stateNodes := make(map[string]*ListItem)
+	var archiveRoot *ListItem
+	
+	var templatesNode *ListItem
+
 	for _, t := range topLevelTasks {
 		taskItem := itemMap[t.ID]
 
-		// Intercept Templates so they skip chronological binning
+		// Intercept Templates
 		if strings.HasPrefix(t.ID, "recur-") {
 			if templatesNode == nil {
-				// Keep it collapsed by default so it doesn't clutter the UI
 				expanded := false
-			if val, ok := m.expandedState["folder:Templates"]; ok { expanded = val }
-			templatesNode = &ListItem{Title: "Templates", Expanded: expanded} 
+				if val, ok := m.expandedState["folder:Templates"]; ok { expanded = val }
+				templatesNode = &ListItem{Title: "Templates", Expanded: expanded} 
 			}
 			templatesNode.Children = append(templatesNode.Children, taskItem)
 			continue
 		}
 
-		// Intercept Backlog tasks so they skip chronological binning
-		if strings.HasPrefix(t.ID, "backlog-") {
-			if backlogNode == nil {
+		statusStr := string(t.Status)
+		if statusStr == "" {
+			statusStr = "New"
+		}
+		
+		if isArchive(statusStr) {
+			if archiveRoot == nil {
 				expanded := false
-			if val, ok := m.expandedState["folder:Backlog"]; ok { expanded = val }
-			backlogNode = &ListItem{Title: "Backlog", Expanded: expanded}
+				if val, ok := m.expandedState["folder:Archive"]; ok { expanded = val }
+				archiveRoot = &ListItem{Title: "Archive", Expanded: expanded}
 			}
-			backlogNode.Children = append(backlogNode.Children, taskItem)
+			
+			// Group by year/month/day
+			yStr := t.CreatedAt.Format("2006")
+			mStr := t.CreatedAt.Format("January")
+			dStr := t.CreatedAt.Format("02 (Mon)")
+			
+			var yNode, mNode, dNode *ListItem
+			for _, child := range archiveRoot.Children {
+				if child.Title == yStr {
+					yNode = child
+					break
+				}
+			}
+			if yNode == nil {
+				expanded := false
+				if val, ok := m.expandedState["folder:Archive:"+yStr]; ok { expanded = val }
+				yNode = &ListItem{Title: yStr, Expanded: expanded}
+				archiveRoot.Children = append(archiveRoot.Children, yNode)
+			}
+			
+			for _, child := range yNode.Children {
+				if child.Title == mStr {
+					mNode = child
+					break
+				}
+			}
+			if mNode == nil {
+				expanded := false
+				if val, ok := m.expandedState["folder:Archive:"+mStr]; ok { expanded = val }
+				mNode = &ListItem{Title: mStr, Expanded: expanded}
+				yNode.Children = append(yNode.Children, mNode)
+			}
+			
+			for _, child := range mNode.Children {
+				if child.Title == dStr {
+					dNode = child
+					break
+				}
+			}
+			if dNode == nil {
+				expanded := false
+				if val, ok := m.expandedState["folder:Archive:"+dStr]; ok { expanded = val }
+				dNode = &ListItem{Title: dStr, Expanded: expanded}
+				mNode.Children = append(mNode.Children, dNode)
+			}
+			
+			dNode.Children = append(dNode.Children, taskItem)
 			continue
 		}
-
-		// Intercept Today's tasks
-		now := time.Now()
-		isToday := t.CreatedAt.Year() == now.Year() && t.CreatedAt.Month() == now.Month() && t.CreatedAt.Day() == now.Day()
-		if isToday {
-			if todayNode == nil {
-				expanded := true
-			if val, ok := m.expandedState["folder:Today"]; ok { expanded = val }
-			todayNode = &ListItem{Title: "Today", Expanded: expanded}
-			}
-			todayNode.Children = append(todayNode.Children, taskItem)
-			continue
-		}
-
-		yStr := t.CreatedAt.Format("2006")
-		mStr := t.CreatedAt.Format("January")
-		dStr := t.CreatedAt.Format("02 (Mon)")
 		
-		if lastYear == nil || lastYear.Title != yStr {
-			expanded := false
-		if val, ok := m.expandedState["folder:"+yStr]; ok { expanded = val }
-		lastYear = &ListItem{Title: yStr, Expanded: expanded}
-			items = append(items, lastYear)
-			lastMonth = nil // Reset month and day
-			lastDay = nil
+		// It's an active task, group by state
+		node, exists := stateNodes[statusStr]
+		if !exists {
+			expanded := true // Default to expanded for active states
+			if val, ok := m.expandedState["folder:"+statusStr]; ok { expanded = val }
+			node = &ListItem{Title: statusStr, Expanded: expanded}
+			stateNodes[statusStr] = node
 		}
-		
-		if lastMonth == nil || lastMonth.Title != mStr {
-			expanded := false
-		if val, ok := m.expandedState["folder:"+mStr]; ok { expanded = val }
-		lastMonth = &ListItem{Title: mStr, Expanded: expanded}
-			lastYear.Children = append(lastYear.Children, lastMonth)
-			lastDay = nil
-		}
-		
-		if lastDay == nil || lastDay.Title != dStr {
-			expanded := false
-		if val, ok := m.expandedState["folder:"+dStr]; ok { expanded = val }
-		lastDay = &ListItem{Title: dStr, Expanded: expanded}
-			lastMonth.Children = append(lastMonth.Children, lastDay)
-		}
-		
-		lastDay.Children = append(lastDay.Children, taskItem)
+		node.Children = append(node.Children, taskItem)
 	}
 
-	// Build the final ordered list
 	var finalItems []*ListItem
 	
-	if todayNode != nil {
-		finalItems = append(finalItems, todayNode)
+	// Add configured states in exact order
+	for _, st := range dashStates {
+		// We use case-insensitive matching in case config casing doesn't exactly match ADO casing
+		for k, node := range stateNodes {
+			if strings.EqualFold(k, st) {
+				finalItems = append(finalItems, node)
+				delete(stateNodes, k)
+				break
+			}
+		}
 	}
 	
-	// Append the historical Year/Month/Day tree
-	finalItems = append(finalItems, items...)
-	
-	if backlogNode != nil {
-		finalItems = append(finalItems, backlogNode)
+	// Add any unknown dynamically discovered states
+	var unknownKeys []string
+	for k := range stateNodes {
+		unknownKeys = append(unknownKeys, k)
+	}
+	sort.Strings(unknownKeys)
+	for _, k := range unknownKeys {
+		finalItems = append(finalItems, stateNodes[k])
 	}
 	
+	if archiveRoot != nil {
+		finalItems = append(finalItems, archiveRoot)
+	}
 	if templatesNode != nil {
 		finalItems = append(finalItems, templatesNode)
 	}
