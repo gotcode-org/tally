@@ -154,7 +154,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, func() tea.Msg { return LogTimeMsg{ID: row.Item.ID} }
 				}
 			}
-		case "X":
+		case "X", "delete":
 			flatRows := m.getFlatRows()
 			if len(flatRows) > 0 {
 				row := flatRows[m.cursor]
@@ -484,6 +484,12 @@ func (m ListModel) View() string {
 		
 		if isCursor {
 			cursorStartLine = len(allLines)
+		}
+		
+		// CPU Optimization: Skip heavy lipgloss rendering for items far off-screen
+		if i < m.cursor - (visibleRows * 2) || i > m.cursor + (visibleRows * 2) {
+			allLines = append(allLines, "")
+			continue
 		}
 		
 		titleCell := getRowTitle(row)
