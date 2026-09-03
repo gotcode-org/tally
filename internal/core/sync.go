@@ -279,20 +279,30 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 			}
 		}
 
-		unsynced := t.UnsyncedSeconds()
-		if unsynced > 0 && t.ADOID != nil {
-			fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n", unsynced, *t.ADOID)
+		hasChanges := false
+		for i := range t.TimeLogs {
+			logEntry := &t.TimeLogs[i]
+			if logEntry.Synced || t.ADOID == nil {
+				continue
+			}
+
+			fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n", logEntry.Seconds, *t.ADOID)
 			
 			logData := map[string]interface{}{
-				"timestamp":  time.Now().Format(time.RFC3339),
-				"length":     unsynced,
+				"timestamp":  logEntry.Timestamp.Format(time.RFC3339),
+				"length":     logEntry.Seconds,
 				"workItemId": *t.ADOID,
 				"comment":    "Logged via Tally terminal",
 			}
 			
-			// 7pace strictly requires a valid GUID. If the user typed "Development", it throws a 500.
-			if len(cfg.SevenPace.ActivityID) >= 32 {
-				logData["activityTypeId"] = cfg.SevenPace.ActivityID
+			// Use the specific activity ID if set, otherwise fallback to default
+			actID := logEntry.ActivityID
+			if actID == "" {
+				actID = cfg.SevenPace.ActivityID
+			}
+			
+			if len(actID) >= 32 {
+				logData["activityTypeId"] = actID
 			}
 			
 			payload, _ := json.Marshal(logData)
@@ -308,14 +318,26 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 			}
 			
 			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-				t.SyncedSeconds = t.TotalSeconds
-				a.Store.Save(t)
+				logEntry.Synced = true
+				hasChanges = true
 				fmt.Printf("  -> Time successfully logged to 7pace!\n")
 			} else {
 				body, _ := io.ReadAll(resp.Body)
 				fmt.Printf("  -> Failed to log time to 7pace (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
 			}
 			resp.Body.Close()
+		}
+		
+		if hasChanges {
+			// Recalculate SyncedSeconds based on successful discrete logs
+			synced := 0
+			for _, l := range t.TimeLogs {
+				if l.Synced {
+					synced += l.Seconds
+				}
+			}
+			t.SyncedSeconds = synced
+			a.Store.Save(t)
 		}
 	}
 
