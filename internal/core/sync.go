@@ -528,6 +528,69 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 		}
 	}
 	
+	// Pass 1.5: Fetch any missing Parents on-demand (e.g. if they fell outside the 14-day WIQL window)
+	for _, parentADO := range childToParentADO {
+		if adoToLocal[parentADO] == "" {
+			fmt.Printf("Fetching out-of-window parent ADO #%d...\n", parentADO)
+			detailUrl := fmt.Sprintf("%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), parentADO)
+			req2, _ := http.NewRequest("GET", detailUrl, nil)
+			req2.SetBasicAuth("", adoPat)
+			
+			resp2, err := client.Do(req2)
+			if err != nil || resp2.StatusCode >= 400 {
+				continue
+			}
+			
+			var details struct {
+				Fields map[string]interface{} `json:"fields"`
+			}
+			dBody, _ := io.ReadAll(resp2.Body)
+			resp2.Body.Close()
+			json.Unmarshal(dBody, &details)
+			
+			title, _ := details.Fields["System.Title"].(string)
+			state, _ := details.Fields["System.State"].(string)
+			adoType, _ := details.Fields["System.WorkItemType"].(string)
+			
+			createdStr, _ := details.Fields["System.CreatedDate"].(string)
+			changedStr, _ := details.Fields["System.ChangedDate"].(string)
+			
+			createdAt := time.Now()
+			if t, err := time.Parse(time.RFC3339, createdStr); err == nil {
+				createdAt = t
+			}
+			updatedAt := time.Now()
+			if t, err := time.Parse(time.RFC3339, changedStr); err == nil {
+				updatedAt = t
+			}
+			
+			baseID, _ := a.Store.GetNextID(createdAt, false)
+			prefix := baseID[:9]
+			seq := 1
+			if val, exists := generatedSeqs[prefix]; exists {
+				seq = val + 1
+			} else if len(baseID) > 9 {
+				fmt.Sscanf(baseID[9:], "%d", &seq)
+			}
+			generatedSeqs[prefix] = seq
+			newID := fmt.Sprintf("%s%03d", prefix, seq)
+			
+			adoIdVal := parentADO
+			newTask := &Task{
+				ID: newID,
+				Title: title,
+				Status: TaskState(state),
+				ADOType: adoType,
+				ADOID: &adoIdVal,
+				CreatedAt: createdAt,
+				UpdatedAt: updatedAt,
+			}
+			
+			adoToLocal[parentADO] = newID
+			pendingTasks = append(pendingTasks, newTask)
+		}
+	}
+
 	// Pass 2: Reconstruct Hierarchy and Save
 	for _, t := range pendingTasks {
 		if parentADO, ok := childToParentADO[t.ID]; ok {
