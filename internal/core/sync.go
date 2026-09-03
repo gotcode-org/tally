@@ -439,6 +439,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 	
 	var pendingTasks []*Task
 	childToParentADO := make(map[string]int)
+	generatedSeqs := make(map[string]int)
 	
 	for _, wi := range wiqlResp.WorkItems {
 		if adoToLocal[wi.ID] == "" {
@@ -482,7 +483,21 @@ func (a *App) Fetch(cfg *config.Config, adoPat string) error {
 				updatedAt = t
 			}
 			
-			newID, _ := a.Store.GetNextID(createdAt, false)
+			// We must manually track sequences in memory since we don't save until Pass 2
+			baseID, _ := a.Store.GetNextID(createdAt, false)
+			prefix := baseID[:9] // e.g. 20260903.
+			
+			seq := 1
+			if val, exists := generatedSeqs[prefix]; exists {
+				seq = val + 1
+			} else {
+				// Parse the sequence from baseID
+				if len(baseID) > 9 {
+					fmt.Sscanf(baseID[9:], "%d", &seq)
+				}
+			}
+			generatedSeqs[prefix] = seq
+			newID := fmt.Sprintf("%s%03d", prefix, seq)
 			
 			adoIdVal := wi.ID
 			newTask := &Task{
