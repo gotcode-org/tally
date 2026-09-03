@@ -522,6 +522,10 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 					if sResp.StatusCode == 200 {
 						type WorkLog struct {
 							Length int `json:"length"`
+							WorkItemId int `json:"workItemId"`
+							WorkItem struct {
+								ID int `json:"id"`
+							} `json:"workItem"`
 							User struct {
 								Email string `json:"email"`
 							} `json:"user"`
@@ -549,6 +553,9 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 						}
 						
 						for _, l := range allLogs {
+							if l.WorkItemId != wi.ID && l.WorkItem.ID != wi.ID {
+								continue
+							}
 							fmt.Printf("  -> [DEBUG] Found 7pace log for user email: '%s' (%d seconds)\n", l.User.Email, l.Length)
 							targetEmail := cfg.SevenPace.Email
 							if targetEmail == "" {
