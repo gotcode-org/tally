@@ -73,6 +73,8 @@ type ListModel struct {
 	terminalHeight int
 	widthPct       float64
 	heightPct      float64
+	confirmingID   string
+	confirmingTitle string
 }
 
 func NewListModel(title string, items []*ListItem) ListModel {
@@ -154,12 +156,14 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, func() tea.Msg { return LogTimeMsg{ID: row.Item.ID} }
 				}
 			}
-		case "X", "delete":
+		case "x", "delete":
 			flatRows := m.getFlatRows()
 			if len(flatRows) > 0 {
 				row := flatRows[m.cursor]
 				if row.Item.ID != "" {
-					return m, func() tea.Msg { return DeleteTaskMsg{ID: row.Item.ID} }
+					m.confirmingID = row.Item.ID
+					m.confirmingTitle = row.Item.Title
+					return m, nil
 				}
 			}
 		case "m":
@@ -170,6 +174,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, func() tea.Msg { return StartTaskMsg{ID: row.Item.ID} }
 				}
 			}
+
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
