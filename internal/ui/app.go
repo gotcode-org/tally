@@ -705,8 +705,11 @@ func (m *MainModel) View() string {
 		return m.form.View()
 	}
 	if m.state == StateSyncing {
-		w := m.terminalWidth
-		h := m.terminalHeight
+		w := int(float64(m.terminalWidth) * 0.50)
+		if w < 60 { w = 60 }
+		if w > m.terminalWidth { w = m.terminalWidth }
+		
+		h := 12
 		
 		headerColor := ThemeMauve
 		if m.syncErr != nil {
@@ -715,27 +718,59 @@ func (m *MainModel) View() string {
 			headerColor = ThemeGreen
 		}
 		
-		headerFull := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(headerColor).Foreground(ThemeBase).Bold(true).Render(" SYNCHRONIZING ")
+		headerFull := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(headerColor).Foreground(ThemeBase).Bold(true).Render(" " + strings.ToUpper("Synchronizing") + " ")
 		
-		var renderedLines []string
-		for _, l := range m.syncLogs {
-			style := lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).PaddingLeft(4)
-			if strings.Contains(l, "[ERROR]") || strings.Contains(l, "HTTP 400") {
-				style = style.Foreground(ThemeRed).Bold(true)
+		contentWidth := w - 4
+
+		lastLog := "Initializing..."
+		if len(m.syncLogs) > 0 {
+			lastLog = m.syncLogs[len(m.syncLogs)-1]
+		}
+		
+		if lipgloss.Width(lastLog) > contentWidth - 10 {
+			lastLog = lastLog[:contentWidth-13] + "..."
+		}
+		
+		barWidth := contentWidth - 4
+		fillWidth := (len(m.syncLogs) * 3) % barWidth
+		if m.syncErr != nil || (len(m.syncLogs) > 0 && strings.Contains(m.syncLogs[len(m.syncLogs)-1], "✅")) {
+			fillWidth = barWidth
+		}
+		
+		barStyle := lipgloss.NewStyle().Foreground(ThemeMauve).Bold(true)
+		if m.syncErr != nil { barStyle = lipgloss.NewStyle().Foreground(ThemeRed).Bold(true) }
+		if fillWidth == barWidth && m.syncErr == nil { barStyle = lipgloss.NewStyle().Foreground(ThemeGreen).Bold(true) }
+
+		barStr := "[" + barStyle.Render(strings.Repeat("=", fillWidth) + ">") + strings.Repeat(" ", barWidth - fillWidth - 1) + "]"
+		if fillWidth >= barWidth {
+			barStr = "[" + barStyle.Render(strings.Repeat("=", barWidth)) + "]"
+		}
+		
+		var sections []string
+		sections = append(sections, lipgloss.NewStyle().Height(2).Render(""))
+		sections = append(sections, lipgloss.NewStyle().Width(contentWidth).PaddingLeft(2).Foreground(ThemeText).Render("Status: " + lastLog))
+		sections = append(sections, lipgloss.NewStyle().Height(1).Render(""))
+		sections = append(sections, lipgloss.NewStyle().Width(contentWidth).PaddingLeft(2).Render(barStr))
+		
+		if m.syncErr != nil {
+			errMsg := m.syncErr.Error()
+			if lipgloss.Width(errMsg) > contentWidth - 10 {
+				errMsg = errMsg[:contentWidth-13] + "..."
 			}
-			renderedLines = append(renderedLines, style.Render(l))
+			sections = append(sections, lipgloss.NewStyle().Height(1).Render(""))
+			sections = append(sections, lipgloss.NewStyle().Foreground(ThemeRed).Width(contentWidth).PaddingLeft(2).Render("Error: " + errMsg))
+		}
+
+		// Fill remaining
+		for len(sections) < h - 2 {
+			sections = append(sections, lipgloss.NewStyle().Render(""))
+		}
+		if len(sections) > h - 2 {
+			sections = sections[:h-2]
 		}
 		
-		for len(renderedLines) < h - 2 {
-			renderedLines = append(renderedLines, lipgloss.NewStyle().Background(ThemeOverlay).Width(w).Render(""))
-		}
-		
-		if len(renderedLines) > h - 2 {
-			renderedLines = renderedLines[len(renderedLines)-(h-2):]
-		}
-		
-		bodyContent := strings.Join(renderedLines, "\n")
-		paddedBody := lipgloss.NewStyle().Height(h - 2).Background(ThemeOverlay).Width(w).Render(bodyContent)
+		bodyContent := strings.Join(sections, "\n")
+		paddedBody := lipgloss.NewStyle().Height(h - 2).Background(ThemeOverlay).Width(contentWidth).Render(bodyContent)
 		
 		footerText := " Syncing in progress... "
 		if m.syncErr != nil {
@@ -746,7 +781,8 @@ func (m *MainModel) View() string {
 		
 		footer := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(headerColor).Foreground(ThemeBase).Bold(true).Render(footerText)
 		
-		return headerFull + "\n" + paddedBody + "\n" + footer
+		win := lipgloss.NewStyle().Background(ThemeOverlay).Width(w).Height(h).Render(headerFull + "\n" + paddedBody + "\n" + footer)
+		return lipgloss.Place(m.terminalWidth, m.terminalHeight, lipgloss.Center, lipgloss.Center, win)
 	}
 	if m.state == StateStandup {
 		w := m.terminalWidth
