@@ -160,6 +160,8 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, func() tea.Msg { return CreateSubtaskMsg{ParentID: row.Item.ID} }
 				}
 			}
+		case "v":
+			return m, func() tea.Msg { return ShowVersionMsg{} }
 		case "t":
 			return m, func() tea.Msg { return CycleThemeMsg{} }
 		case "r", "R":

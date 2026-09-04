@@ -30,10 +30,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"gotcode.org/tally/internal/config"
 	"gotcode.org/tally/internal/core"
+	"gotcode.org/tally/internal/version"
 )
 
 type SyncLogMsg string
 type CloseModalMsg struct{}
+type ShowVersionMsg struct{}
 
 type AppState int
 
@@ -43,6 +45,7 @@ const (
 	StateLogTime
 	StateStandup
 	StateSyncing
+	StateVersion
 )
 
 type MainModel struct {
@@ -50,6 +53,7 @@ type MainModel struct {
 	state         AppState
 	standupText   string
 	standupScroll int
+	versionScroll int
 	syncLogs      []string
 	syncErr       error
 	logChannel    chan string
@@ -613,6 +617,11 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.reloadList() // reload data after editor closes
 		return m, nil
 
+	case ShowVersionMsg:
+		m.state = StateVersion
+		m.versionScroll = 0
+		return m, nil
+
 	case GenerateStandupMsg:
 		m.generateStandup()
 		m.standupScroll = 0
@@ -658,7 +667,7 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newModel tea.Model
 		newModel, cmd = m.list.Update(msg)
 		m.list = newModel.(ListModel)
-	} else if m.state == StateStandup || m.state == StateSyncing {
+	} else if m.state == StateStandup || m.state == StateSyncing || m.state == StateVersion {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			if msg.String() == "esc" || msg.String() == "q" || msg.String() == "enter" {
@@ -677,6 +686,20 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				if msg.String() == "pgdown" {
 					m.standupScroll += 10
+				}
+			} else if m.state == StateVersion {
+				if msg.String() == "up" || msg.String() == "k" {
+					if m.versionScroll > 0 { m.versionScroll-- }
+				}
+				if msg.String() == "down" || msg.String() == "j" {
+					m.versionScroll++ 
+				}
+				if msg.String() == "pgup" {
+					m.versionScroll -= 10
+					if m.versionScroll < 0 { m.versionScroll = 0 }
+				}
+				if msg.String() == "pgdown" {
+					m.versionScroll += 10
 				}
 			}
 		case tea.WindowSizeMsg:
@@ -821,6 +844,50 @@ func (m *MainModel) View() string {
 		if endIdx > len(bodyLines) { endIdx = len(bodyLines) }
 		
 		for _, l := range bodyLines[m.standupScroll:endIdx] {
+			rawLine := l
+			if lipgloss.Width(rawLine) > contentWidth {
+				rawLine = rawLine[:contentWidth-3] + "..."
+			}
+			renderedLines = append(renderedLines, lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).Width(contentWidth).PaddingLeft(4).Render(rawLine))
+		}
+		
+		for len(renderedLines) < maxLines {
+			renderedLines = append(renderedLines, lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render(""))
+		}
+		
+		bodyContent := strings.Join(renderedLines, "\n")
+		paddedBody := lipgloss.NewStyle().Height(maxLines).Background(ThemeOverlay).Width(contentWidth).Render(bodyContent)
+		
+		footer := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" ↑/↓/pgup/pgdown: scroll • esc/q/enter: close ")
+		
+		win := lipgloss.NewStyle().Background(ThemeOverlay).Width(w).Height(h).Render(headerFull + "\n" + paddedBody + "\n" + footer)
+		return lipgloss.Place(m.terminalWidth, m.terminalHeight, lipgloss.Center, lipgloss.Center, win)
+	}
+		if m.state == StateVersion {
+		w := int(float64(m.terminalWidth) * 0.60)
+		if w < 70 { w = 70 }
+		if w > m.terminalWidth { w = m.terminalWidth }
+		
+		h := int(float64(m.terminalHeight) * 0.80)
+		if h < 20 { h = 20 }
+		if h > m.terminalHeight { h = m.terminalHeight }
+		
+		headerFull := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" VERSION & DEPENDENCIES ")
+		
+		fullText := version.GetVersionString() + "\n\n" + version.GetDepsString()
+		bodyLines := strings.Split(fullText, "\n")
+		contentWidth := w - 4
+		maxLines := h - 2
+		
+		maxScroll := len(bodyLines) - maxLines
+		if maxScroll < 0 { maxScroll = 0 }
+		if m.versionScroll > maxScroll { m.versionScroll = maxScroll }
+		
+		var renderedLines []string
+		endIdx := m.versionScroll + maxLines
+		if endIdx > len(bodyLines) { endIdx = len(bodyLines) }
+		
+		for _, l := range bodyLines[m.versionScroll:endIdx] {
 			rawLine := l
 			if lipgloss.Width(rawLine) > contentWidth {
 				rawLine = rawLine[:contentWidth-3] + "..."
