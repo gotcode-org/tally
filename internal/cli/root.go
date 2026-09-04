@@ -48,6 +48,7 @@ func Execute() {
 	rootCmd.AddCommand(newDebugCmd())
 	rootCmd.AddCommand(newMigrateCmd())
 	rootCmd.AddCommand(newDebugArchiveCmd())
+	rootCmd.AddCommand(newStandupCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
