@@ -697,6 +697,28 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 			newID := fmt.Sprintf("%s%03d", prefix, seq)
 			
 			adoIdVal := parentADO
+			
+			descriptionHTML, _ := details.Fields["System.Description"].(string)
+			acHTML, _ := details.Fields["Microsoft.VSTS.Common.AcceptanceCriteria"].(string)
+			
+			var bodyBuilder strings.Builder
+			if descriptionHTML != "" {
+				markdown, err := converter.ConvertString(descriptionHTML)
+				if err == nil {
+					bodyBuilder.WriteString(markdown)
+				}
+			}
+			if acHTML != "" {
+				markdown, err := converter.ConvertString(acHTML)
+				if err == nil {
+					if bodyBuilder.Len() > 0 {
+						bodyBuilder.WriteString("\n\n---\n\n")
+					}
+					bodyBuilder.WriteString("### Acceptance Criteria\n\n")
+					bodyBuilder.WriteString(markdown)
+				}
+			}
+			
 			newTask := &Task{
 				ID: newID,
 				Title: title,
@@ -706,6 +728,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 				ADOID: &adoIdVal,
 				CreatedAt: createdAt,
 				UpdatedAt: updatedAt,
+				Body: bodyBuilder.String(),
 			}
 			
 			adoToLocal[parentADO] = newID
