@@ -52,6 +52,7 @@ type MainModel struct {
 	syncLogs      []string
 	syncErr       error
 	logChannel    chan string
+	syncTicks     int
 	list          ListModel
 	expandedState map[string]bool
 	form    *FormModel
@@ -546,6 +547,7 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case SyncTasksMsg:
 		m.state = StateSyncing
+		m.syncTicks = 0
 		m.syncLogs = []string{"Starting Bulk Push..."}
 		m.syncErr = nil
 		m.logChannel = make(chan string, 100)
@@ -553,6 +555,7 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		
 	case PullTasksMsg:
 		m.state = StateSyncing
+		m.syncTicks = 0
 		m.syncLogs = []string{"Starting ADO Fetch..."}
 		m.syncErr = nil
 		m.logChannel = make(chan string, 100)
@@ -560,12 +563,14 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		
 	case PushSingleTaskMsg:
 		m.state = StateSyncing
+		m.syncTicks = 0
 		m.syncLogs = []string{"Starting Targeted Push..."}
 		m.syncErr = nil
 		m.logChannel = make(chan string, 100)
 		return m, tea.Batch(m.startSyncProcess("push_single", msg.ID), listenToLogs(m.logChannel))
 		
 	case SyncLogMsg:
+		m.syncTicks++
 		m.syncLogs = append(m.syncLogs, string(msg))
 		// keep only last 50 lines to prevent memory issues
 		if len(m.syncLogs) > 50 {
@@ -732,20 +737,32 @@ func (m *MainModel) View() string {
 		}
 		
 		barWidth := contentWidth - 4
-		fillWidth := (len(m.syncLogs) * 3) % barWidth
-		if m.syncErr != nil || (len(m.syncLogs) > 0 && strings.Contains(m.syncLogs[len(m.syncLogs)-1], "✅")) {
-			fillWidth = barWidth
-		}
-		
-		barStyle := lipgloss.NewStyle().Foreground(ThemeMauve).Bold(true)
-		if m.syncErr != nil { barStyle = lipgloss.NewStyle().Foreground(ThemeRed).Bold(true) }
-		if fillWidth == barWidth && m.syncErr == nil { barStyle = lipgloss.NewStyle().Foreground(ThemeGreen).Bold(true) }
-
 		var barStr string
-		if fillWidth >= barWidth {
+		
+		if m.syncErr != nil || (len(m.syncLogs) > 0 && strings.Contains(m.syncLogs[len(m.syncLogs)-1], "✅")) {
+			barStyle := lipgloss.NewStyle().Foreground(ThemeGreen).Bold(true)
+			if m.syncErr != nil {
+				barStyle = barStyle.Foreground(ThemeRed)
+			}
 			barStr = "[" + barStyle.Render(strings.Repeat("=", barWidth)) + "]"
 		} else {
-			barStr = "[" + barStyle.Render(strings.Repeat("=", fillWidth) + ">") + strings.Repeat(" ", barWidth - fillWidth - 1) + "]"
+			blockWidth := 15
+			if blockWidth > barWidth { blockWidth = barWidth }
+			travel := barWidth - blockWidth
+			if travel < 1 { travel = 1 }
+			
+			cycle := travel * 2
+			pos := m.syncTicks % cycle
+			if pos >= travel {
+				pos = cycle - pos
+			}
+			
+			leftSpace := pos
+			rightSpace := barWidth - blockWidth - leftSpace
+			if rightSpace < 0 { rightSpace = 0 }
+			
+			barStyle := lipgloss.NewStyle().Foreground(ThemeMauve).Bold(true)
+			barStr = "[" + strings.Repeat(" ", leftSpace) + barStyle.Render(strings.Repeat("=", blockWidth)) + strings.Repeat(" ", rightSpace) + "]"
 		}
 		
 		var sections []string
