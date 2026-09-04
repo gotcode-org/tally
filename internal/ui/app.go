@@ -582,6 +582,11 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.reloadList() // reload data after editor closes
 		return m, nil
 
+	case GenerateStandupMsg:
+		m.generateStandup()
+		m.state = StateStandup
+		return m, nil
+
 	case CreateNewTaskMsg:
 		m.state = StateCreateTask
 		m.buildCreateForm("")
