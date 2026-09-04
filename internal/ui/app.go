@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"gotcode.org/tally/internal/core"
 )
 
@@ -36,11 +37,13 @@ const (
 	StateDashboard AppState = iota
 	StateCreateTask
 	StateLogTime
+	StateStandup
 )
 
 type MainModel struct {
 	coreApp       *core.App
 	state         AppState
+	standupText   string
 	list          ListModel
 	expandedState map[string]bool
 	form    *FormModel
@@ -617,6 +620,16 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newModel tea.Model
 		newModel, cmd = m.list.Update(msg)
 		m.list = newModel.(ListModel)
+	} else if m.state == StateStandup {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			if msg.String() == "esc" || msg.String() == "q" || msg.String() == "enter" {
+				m.state = StateDashboard
+			}
+		case tea.WindowSizeMsg:
+			m.terminalWidth = msg.Width
+			m.terminalHeight = msg.Height
+		}
 	} else if m.state == StateCreateTask || m.state == StateLogTime {
 		var newModel tea.Model
 		newModel, cmd = m.form.Update(msg)
@@ -630,6 +643,33 @@ func (m *MainModel) View() string {
 	if (m.state == StateCreateTask || m.state == StateLogTime) && m.form != nil {
 		return m.form.View()
 	}
+	if m.state == StateStandup {
+		w := m.terminalWidth
+		h := m.terminalHeight
+		
+		headerFull := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" STANDUP REPORT ")
+		
+		bodyLines := strings.Split(m.standupText, "\n")
+		var renderedLines []string
+		for _, l := range bodyLines {
+			renderedLines = append(renderedLines, lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).PaddingLeft(4).Render(l))
+		}
+		
+		for len(renderedLines) < h - 2 {
+			renderedLines = append(renderedLines, lipgloss.NewStyle().Background(ThemeOverlay).Width(w).Render(""))
+		}
+		
+		if len(renderedLines) > h - 2 {
+			renderedLines = renderedLines[:h-2]
+		}
+		
+		bodyContent := strings.Join(renderedLines, "\n")
+		paddedBody := lipgloss.NewStyle().Height(h - 2).Background(ThemeOverlay).Width(w).Render(bodyContent)
+		
+		footer := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" esc/q/enter: close ")
+		
+		return headerFull + "\n" + paddedBody + "\n" + footer
+	}
 	return m.list.View()
 }
 
@@ -639,4 +679,59 @@ func RunApp(app *core.App) error {
 		return err
 	}
 	return nil
+}
+
+func (m *MainModel) generateStandup() {
+	tasks, _ := m.coreApp.Store.ListTasks("")
+	var active []*core.Task
+	var blocked []*core.Task
+
+	for _, t := range tasks {
+		status := strings.ToLower(string(t.Status))
+		if status == "active" || status == "in progress" || status == "doing" {
+			active = append(active, t)
+		} else if status == "blocked" || status == "paused" || status == "on hold" || status == "waiting" {
+			blocked = append(blocked, t)
+		}
+	}
+
+	now := time.Now()
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("# 🌅 Standup - %s\n\n", now.Format("2006-01-02")))
+
+	sb.WriteString("## 🏃 Active\n")
+	if len(active) == 0 {
+		sb.WriteString("- *No active items*\n")
+	} else {
+		for _, t := range active {
+			adoTag := ""
+			if t.ADOID != nil {
+				adoTag = fmt.Sprintf("[ADO-%d] ", *t.ADOID)
+			}
+			timeStr := ""
+			if t.TotalSeconds > 0 {
+				timeStr = fmt.Sprintf(" *(%.1fh tracked)*", float64(t.TotalSeconds)/3600.0)
+			}
+			sb.WriteString(fmt.Sprintf("- **%s%s**%s\n", adoTag, t.Title, timeStr))
+		}
+	}
+	sb.WriteString("\n")
+
+	sb.WriteString("## 🛑 Blocked / Paused\n")
+	if len(blocked) == 0 {
+		sb.WriteString("- *No blocked items*\n")
+	} else {
+		for _, t := range blocked {
+			adoTag := ""
+			if t.ADOID != nil {
+				adoTag = fmt.Sprintf("[ADO-%d] ", *t.ADOID)
+			}
+			sb.WriteString(fmt.Sprintf("- **%s%s**\n", adoTag, t.Title))
+		}
+	}
+
+	outFile := fmt.Sprintf("standup_%s.md", now.Format("2006-01-02"))
+	os.WriteFile(outFile, []byte(sb.String()), 0644)
+	
+	m.standupText = sb.String()
 }
