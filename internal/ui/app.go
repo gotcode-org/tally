@@ -766,23 +766,23 @@ func (m *MainModel) View() string {
 		}
 		
 		var sections []string
-		sections = append(sections, lipgloss.NewStyle().Height(2).Render(""))
-		sections = append(sections, lipgloss.NewStyle().Width(contentWidth).PaddingLeft(2).Foreground(ThemeText).Render("Status: " + lastLog))
-		sections = append(sections, lipgloss.NewStyle().Height(1).Render(""))
-		sections = append(sections, lipgloss.NewStyle().Width(contentWidth).PaddingLeft(2).Render(barStr))
+		sections = append(sections, lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Height(2).Render(""))
+		sections = append(sections, lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).PaddingLeft(2).Foreground(ThemeText).Render("Status: " + lastLog))
+		sections = append(sections, lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Height(1).Render(""))
+		sections = append(sections, lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).PaddingLeft(2).Render(barStr))
 		
 		if m.syncErr != nil {
 			errMsg := m.syncErr.Error()
 			if lipgloss.Width(errMsg) > contentWidth - 10 {
 				errMsg = errMsg[:contentWidth-13] + "..."
 			}
-			sections = append(sections, lipgloss.NewStyle().Height(1).Render(""))
-			sections = append(sections, lipgloss.NewStyle().Foreground(ThemeRed).Width(contentWidth).PaddingLeft(2).Render("Error: " + errMsg))
+			sections = append(sections, lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Height(1).Render(""))
+			sections = append(sections, lipgloss.NewStyle().Background(ThemeOverlay).Foreground(ThemeRed).Width(contentWidth).PaddingLeft(2).Render("Error: " + errMsg))
 		}
 
 		// Fill remaining
 		for len(sections) < h - 2 {
-			sections = append(sections, lipgloss.NewStyle().Render(""))
+			sections = append(sections, lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render(""))
 		}
 		if len(sections) > h - 2 {
 			sections = sections[:h-2]
