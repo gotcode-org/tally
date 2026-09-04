@@ -31,8 +31,13 @@ func newStandupCmd() *cobra.Command {
 				return fmt.Errorf("failed to list tasks: %w", err)
 			}
 
+			now := time.Now()
+			todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+			yesterdayStart := todayStart.AddDate(0, 0, -1)
+
 			var active []*core.Task
 			var blocked []*core.Task
+			var finished []*core.Task
 
 			for _, t := range tasks {
 				status := strings.ToLower(string(t.Status))
@@ -40,10 +45,12 @@ func newStandupCmd() *cobra.Command {
 					active = append(active, t)
 				} else if status == "blocked" || status == "paused" || status == "on hold" || status == "waiting" {
 					blocked = append(blocked, t)
+				} else if status == "closed" || status == "done" || status == "resolved" || status == "completed" {
+					if !t.UpdatedAt.Before(yesterdayStart) {
+						finished = append(finished, t)
+					}
 				}
 			}
-
-			now := time.Now()
 			
 			// Build Markdown
 			var sb strings.Builder

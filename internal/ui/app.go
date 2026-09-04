@@ -699,8 +699,13 @@ func RunApp(app *core.App) error {
 
 func (m *MainModel) generateStandup() {
 	tasks, _ := m.coreApp.Store.ListTasks("")
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	yesterdayStart := todayStart.AddDate(0, 0, -1)
+
 	var active []*core.Task
 	var blocked []*core.Task
+	var finished []*core.Task
 
 	for _, t := range tasks {
 		status := strings.ToLower(string(t.Status))
@@ -708,10 +713,12 @@ func (m *MainModel) generateStandup() {
 			active = append(active, t)
 		} else if status == "blocked" || status == "paused" || status == "on hold" || status == "waiting" {
 			blocked = append(blocked, t)
+		} else if status == "closed" || status == "done" || status == "resolved" || status == "completed" {
+			if !t.UpdatedAt.Before(yesterdayStart) {
+				finished = append(finished, t)
+	}
 		}
 	}
-
-	now := time.Now()
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# 🌅 Standup - %s\n\n", now.Format("2006-01-02")))
 
@@ -738,6 +745,20 @@ func (m *MainModel) generateStandup() {
 		sb.WriteString("- *No blocked items*\n")
 	} else {
 		for _, t := range blocked {
+			adoTag := ""
+			if t.ADOID != nil {
+				adoTag = fmt.Sprintf("[ADO-%d] ", *t.ADOID)
+			}
+			sb.WriteString(fmt.Sprintf("- **%s%s**\n", adoTag, t.Title))
+		}
+	}
+	sb.WriteString("\n")
+
+	sb.WriteString("## ✅ Finished (Today & Yesterday)\n")
+	if len(finished) == 0 {
+		sb.WriteString("- *No finished items*\n")
+	} else {
+		for _, t := range finished {
 			adoTag := ""
 			if t.ADOID != nil {
 				adoTag = fmt.Sprintf("[ADO-%d] ", *t.ADOID)
