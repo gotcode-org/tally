@@ -741,9 +741,11 @@ func (m *MainModel) View() string {
 		if m.syncErr != nil { barStyle = lipgloss.NewStyle().Foreground(ThemeRed).Bold(true) }
 		if fillWidth == barWidth && m.syncErr == nil { barStyle = lipgloss.NewStyle().Foreground(ThemeGreen).Bold(true) }
 
-		barStr := "[" + barStyle.Render(strings.Repeat("=", fillWidth) + ">") + strings.Repeat(" ", barWidth - fillWidth - 1) + "]"
+		var barStr string
 		if fillWidth >= barWidth {
 			barStr = "[" + barStyle.Render(strings.Repeat("=", barWidth)) + "]"
+		} else {
+			barStr = "[" + barStyle.Render(strings.Repeat("=", fillWidth) + ">") + strings.Repeat(" ", barWidth - fillWidth - 1) + "]"
 		}
 		
 		var sections []string
