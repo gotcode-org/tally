@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Native UI Sync Engine**: The `sync` (`s`), `fetch` (`p`), and `push_single` (`u`) operations now run entirely within the native Bubbletea event loop instead of suspending the TUI to run a raw bash shell.
+- **Standup Finished Items**: The `tally standup` CLI and TUI report generator now explicitly loops in tasks marked as Closed, Done, Resolved, or Completed within the last 48 hours.
+- **Scrollable TUI Modals**: The Standup Report (`r`) and the new Version dashboard (`v`) open in compact, centered UI modals with full vertical scrolling (`up`/`down`, `pgup`/`pgdown`, `j`/`k`).
+- **Build Version Metadata**: Added a `tally version` command and `v` TUI hotkey. The Makefile now automatically injects `VERSION`, `COMMIT`, and `BRANCH` via LDFLAGS, and the Go binary dynamically exposes its embedded dependency tree.
 - **Isolated Single-Task Sync (`u`)**: Added a targeted push feature mapped to `u` in the TUI (or `tally push <id>`) that instantly syncs a single task without incurring a full filesystem scan.
 - **Corporate Alias Configuration**: Added `email` to the `7pace` block in `config.yaml` to gracefully handle user environments with differing ADO/Git and 7pace domain logins.
 - **Tally Debug Task CLI**: Added `tally debug-task <id>` to instantly dump raw local task structs and yaml frontmatter to the console for troubleshooting.
@@ -18,9 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Automatic Story Sizing**: Tally automatically defaults empty ADO tasks to `story_points: 1.0` when fetching to satisfy strict ADO Agile state transition rules upon pushing.
 
 ### Changed
+- **Sync Visuals**: Replaced the raw terminal log wall during sync operations with an animated, indeterminate bouncing progress bar and a 1-line real-time status output.
 - **Create Form Streamlined**: Stripped the redundant "Backlog?" toggle entirely from the UI and CLI; tasks seamlessly start as `New`.
 
 ### Fixed
+- **UI Progress Bar Panic**: Fixed a runtime panic caused by `strings.Repeat` receiving a negative width when the sync modal caught an API error and forced a 100% fill override.
+- **ANSI Color Bleed**: Forced explicit background colors on raw spaces within modals to prevent internal reset codes (`\x1b[0m`) from stripping backgrounds and bleeding the default terminal colors.
 - **Massive Scrolling CPU Spikes**: Refactored the UI engine to cache flattened tree structures and pre-render expensive Lipgloss ANSI blocks. Drops CPU consumption during rapid key repeats from 100% to near 0%.
 - **Cursor Reset Bug**: The TUI cursor no longer wildly jumps back to the top (index 0) of the list after deleting a task, gracefully falling back to its nearest available index.
 - **UI State Persistence Loss**: Fixed a bug where Archive folders (Year, Month, Day) silently collapsed during UI refreshes due to tracking string path mismatches.
@@ -31,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-09-02
 
 ### Added
+- **Native UI Sync Engine**: The `sync` (`s`), `fetch` (`p`), and `push_single` (`u`) operations now run entirely within the native Bubbletea event loop instead of suspending the TUI to run a raw bash shell.
+- **Standup Finished Items**: The `tally standup` CLI and TUI report generator now explicitly loops in tasks marked as Closed, Done, Resolved, or Completed within the last 48 hours.
+- **Scrollable TUI Modals**: The Standup Report (`r`) and the new Version dashboard (`v`) open in compact, centered UI modals with full vertical scrolling (`up`/`down`, `pgup`/`pgdown`, `j`/`k`).
+- **Build Version Metadata**: Added a `tally version` command and `v` TUI hotkey. The Makefile now automatically injects `VERSION`, `COMMIT`, and `BRANCH` via LDFLAGS, and the Go binary dynamically exposes its embedded dependency tree.
 - **ADO Sync Debug Toggle**: Added `ado.debug: true` flag to `config.yaml` to optionally enable verbose JSON telemetry dumps during syncs (silenced by default).
 - **5 New Color Themes**: Added Gruvbox, Tokyo Night, Rosé Pine, Monokai, and Solarized Dark to the TUI's rotation (press `t` to cycle through them).
 - **TUI Time Summary**: Added live granular time logging summary counters (Day, Week, Month, Year) to the footer of the TUI dashboard.
@@ -63,6 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standardized `GPL-3.0` License headers applied to all Go source files.
 
 ### Fixed
+- **UI Progress Bar Panic**: Fixed a runtime panic caused by `strings.Repeat` receiving a negative width when the sync modal caught an API error and forced a 100% fill override.
+- **ANSI Color Bleed**: Forced explicit background colors on raw spaces within modals to prevent internal reset codes (`\x1b[0m`) from stripping backgrounds and bleeding the default terminal colors.
 - **ADO Update Payload Drops**: Swimlanes, Tags, and Story Points are now properly injected into the ADO JSON patch payload during *updates* (previously they only triggered on task creation).
 - **ADO WYSIWYG Editor Swallowing**: Markdown body output is now wrapped in explicit HTML `<div>` elements during ADO syncs to prevent Azure DevOps from silently dropping bare text strings in rich text fields.
 - **Recurrence Scheduling Rules**: Overhauled the Reconciliation engine to properly evaluate ISO weeks and calendar boundaries for `weekly`, `monthly`, and `weekdays` rules instead of cloning everything daily.
