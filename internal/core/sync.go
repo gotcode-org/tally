@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"gotcode.org/tally/internal/config"
+	md "github.com/JohannesKaufmann/html-to-markdown"
 )
 
 func logf(logChan chan<- string, format string, args ...interface{}) {
@@ -404,6 +405,7 @@ func parseMarkdownSections(body string) (description, acceptanceCriteria string)
 // Fetch queries ADO for all work items assigned to the current user, and restores any missing local markdown files.
 func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, logChan chan<- string) error {
 	client := &http.Client{Timeout: 30 * time.Second}
+	converter := md.NewConverter("", true, nil)
 	
 	fetchDays := cfg.ADO.FetchDays
 	if fetchDays <= 0 {
@@ -518,6 +520,28 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 			newID := fmt.Sprintf("%s%03d", prefix, seq)
 			
 			adoIdVal := wi.ID
+			
+			descriptionHTML, _ := details.Fields["System.Description"].(string)
+			acHTML, _ := details.Fields["Microsoft.VSTS.Common.AcceptanceCriteria"].(string)
+			
+			var bodyBuilder strings.Builder
+			if descriptionHTML != "" {
+				markdown, err := converter.ConvertString(descriptionHTML)
+				if err == nil {
+					bodyBuilder.WriteString(markdown)
+				}
+			}
+			if acHTML != "" {
+				markdown, err := converter.ConvertString(acHTML)
+				if err == nil {
+					if bodyBuilder.Len() > 0 {
+						bodyBuilder.WriteString("\n\n---\n\n")
+					}
+					bodyBuilder.WriteString("### Acceptance Criteria\n\n")
+					bodyBuilder.WriteString(markdown)
+				}
+			}
+			
 			newTask := &Task{
 				ID: newID,
 				Title: title,
@@ -527,6 +551,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 				ADOID: &adoIdVal,
 				CreatedAt: createdAt,
 				UpdatedAt: updatedAt,
+				Body: bodyBuilder.String(),
 			}
 			
 			// Fetch existing time from 7pace
