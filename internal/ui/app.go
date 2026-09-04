@@ -739,12 +739,14 @@ func (m *MainModel) View() string {
 		barWidth := contentWidth - 4
 		var barStr string
 		
+		bgStyle := lipgloss.NewStyle().Background(ThemeOverlay).Foreground(ThemeText)
+		
 		if m.syncErr != nil || (len(m.syncLogs) > 0 && strings.Contains(m.syncLogs[len(m.syncLogs)-1], "✅")) {
-			barStyle := lipgloss.NewStyle().Foreground(ThemeGreen).Bold(true)
+			barStyle := lipgloss.NewStyle().Foreground(ThemeGreen).Background(ThemeOverlay).Bold(true)
 			if m.syncErr != nil {
 				barStyle = barStyle.Foreground(ThemeRed)
 			}
-			barStr = "[" + barStyle.Render(strings.Repeat("=", barWidth)) + "]"
+			barStr = bgStyle.Render("[") + barStyle.Render(strings.Repeat("=", barWidth)) + bgStyle.Render("]")
 		} else {
 			blockWidth := 15
 			if blockWidth > barWidth { blockWidth = barWidth }
@@ -761,8 +763,8 @@ func (m *MainModel) View() string {
 			rightSpace := barWidth - blockWidth - leftSpace
 			if rightSpace < 0 { rightSpace = 0 }
 			
-			barStyle := lipgloss.NewStyle().Foreground(ThemeMauve).Bold(true)
-			barStr = "[" + strings.Repeat(" ", leftSpace) + barStyle.Render(strings.Repeat("=", blockWidth)) + strings.Repeat(" ", rightSpace) + "]"
+			barStyle := lipgloss.NewStyle().Foreground(ThemeMauve).Background(ThemeOverlay).Bold(true)
+			barStr = bgStyle.Render("[") + bgStyle.Render(strings.Repeat(" ", leftSpace)) + barStyle.Render(strings.Repeat("=", blockWidth)) + bgStyle.Render(strings.Repeat(" ", rightSpace)) + bgStyle.Render("]")
 		}
 		
 		var sections []string
