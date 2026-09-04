@@ -893,6 +893,27 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 						newTask.ADORev = details.Rev
 						if val, ok := details.Fields["System.Title"].(string); ok { newTask.Title = val }
 						if val, ok := details.Fields["System.State"].(string); ok { newTask.Status = TaskState(val) }
+						
+						converter := md.NewConverter("", true, nil)
+						descHTML, _ := details.Fields["System.Description"].(string)
+						acHTML, _ := details.Fields["Microsoft.VSTS.Common.AcceptanceCriteria"].(string)
+						var bodyBuilder strings.Builder
+						if descHTML != "" {
+							if markdown, err := converter.ConvertString(descHTML); err == nil {
+								bodyBuilder.WriteString(markdown)
+							}
+						}
+						if acHTML != "" {
+							if markdown, err := converter.ConvertString(acHTML); err == nil {
+								if bodyBuilder.Len() > 0 {
+									bodyBuilder.WriteString("\n\n---\n\n")
+								}
+								bodyBuilder.WriteString("### Acceptance Criteria\n\n")
+								bodyBuilder.WriteString(markdown)
+							}
+						}
+						newTask.Body = bodyBuilder.String()
+						
 						return []*Task{newTask}, nil
 					}
 				}
