@@ -410,7 +410,7 @@ func parseMarkdownSections(body string) (description, acceptanceCriteria string)
 }
 
 // Fetch queries ADO for all work items assigned to the current user, and restores any missing local markdown files.
-func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, logChan chan<- string) error {
+func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, logChan chan<- string) ([]*Task, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 	converter := md.NewConverter("", true, nil)
 	
@@ -427,7 +427,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 	
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to hit WIQL endpoint: %w", err)
+		return nil, fmt.Errorf("failed to hit WIQL endpoint: %w", err)
 	}
 	defer resp.Body.Close()
 	
@@ -439,11 +439,11 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 	
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("WIQL rejected (HTTP %d): %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("WIQL rejected (HTTP %d): %s", resp.StatusCode, string(body))
 	}
 	
 	if err := json.Unmarshal(body, &wiqlResp); err != nil {
-		return err
+		return nil, err
 	}
 	
 	tasks, _ := a.Store.ListTasks("")
@@ -457,6 +457,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 	logf(logChan, "WIQL returned %d tasks assigned to you. Comparing against local files...\n", len(wiqlResp.WorkItems))
 	
 	var pendingTasks []*Task
+	var conflicts []*Task
 	childToParentADO := make(map[string]int)
 	generatedSeqs := make(map[string]int)
 	
@@ -562,6 +563,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 			
 			adoIdVal := details.ID
 			var newTask *Task
+			isConflict := false
 			
 			if existingTask == nil {
 				baseID, _ := a.Store.GetNextID(createdAt, false)
@@ -586,7 +588,9 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 				}
 				adoToLocal[details.ID] = newID
 			} else {
-				newTask = existingTask
+				taskCopy := *existingTask
+				newTask = &taskCopy
+				isConflict = true
 			}
 			
 			newTask.Title = title
@@ -652,7 +656,11 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 				}
 			}
 			
-			pendingTasks = append(pendingTasks, newTask)
+			if isConflict {
+				conflicts = append(conflicts, newTask)
+			} else {
+				pendingTasks = append(pendingTasks, newTask)
+			}
 			
 			// Check for parent relation
 			for _, rel := range details.Relations {
@@ -774,7 +782,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 	}
 	
 	logf(logChan, "Successfully restored %d missing tasks from ADO!\n", len(pendingTasks))
-	return nil
+	return conflicts, nil
 }
 
 // SyncSingle executes the network operations to push a single local task to ADO and 7pace.

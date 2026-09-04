@@ -36,7 +36,7 @@ func newFetchCmd() *cobra.Command {
 			app := core.NewApp(s)
 
 			fmt.Println("Connecting to Azure DevOps WIQL API...")
-			if err := app.Fetch(cfg, adoPat, sevenPaceToken, nil); err != nil {
+			if _, err := app.Fetch(cfg, adoPat, sevenPaceToken, nil); err != nil {
 				return err
 			}
 			return nil

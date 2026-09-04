@@ -20,6 +20,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"gotcode.org/tally/internal/core"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -43,7 +44,7 @@ type CycleThemeMsg struct{}
 type GenerateStandupMsg struct{}
 
 type RefreshMsg struct{}
-type SyncFinishedMsg struct{ Err error }
+type SyncFinishedMsg struct{ Err error; Conflicts []*core.Task }
 
 type ListItem struct {
 	ID           string

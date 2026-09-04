@@ -46,6 +46,7 @@ const (
 	StateStandup
 	StateSyncing
 	StateVersion
+	StateConflict
 )
 
 type MainModel struct {
@@ -58,6 +59,7 @@ type MainModel struct {
 	syncErr       error
 	logChannel    chan string
 	syncTicks     int
+	conflictQueue []*core.Task
 	list          ListModel
 	expandedState map[string]bool
 	form    *FormModel
@@ -1024,11 +1026,12 @@ func (m *MainModel) startSyncProcess(jobType string, targetID string) tea.Cmd {
 		}
 		var err error
 
+		var conflicts []*core.Task
 		switch jobType {
 		case "sync":
 			err = m.coreApp.Sync(cfg, adoPat, spToken, m.logChannel)
 		case "fetch":
-			err = m.coreApp.Fetch(cfg, adoPat, spToken, m.logChannel)
+			conflicts, err = m.coreApp.Fetch(cfg, adoPat, spToken, m.logChannel)
 		case "push_single":
 			err = m.coreApp.SyncSingle(cfg, adoPat, spToken, targetID, m.logChannel)
 		}
@@ -1040,6 +1043,6 @@ func (m *MainModel) startSyncProcess(jobType string, targetID string) tea.Cmd {
 		}
 		
 		time.Sleep(200 * time.Millisecond) // let the UI drain the channel
-		return SyncFinishedMsg{Err: err}
+		return SyncFinishedMsg{Err: err, Conflicts: conflicts}
 	}
 }
