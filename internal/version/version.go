@@ -13,7 +13,7 @@ var (
 )
 
 func GetVersionString() string {
-	return fmt.Sprintf("Tally v%s (branch: %s, commit: %s)", Version, Branch, Commit)
+	return fmt.Sprintf("Tally %s (branch: %s, commit: %s)", Version, Branch, Commit)
 }
 
 func GetDepsString() string {
