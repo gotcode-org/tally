@@ -732,6 +732,11 @@ func (m *MainModel) View() string {
 			lastLog = m.syncLogs[len(m.syncLogs)-1]
 		}
 		
+		lastLog = strings.TrimSpace(lastLog)
+		if strings.HasPrefix(lastLog, "->") {
+			lastLog = strings.TrimSpace(strings.TrimPrefix(lastLog, "->"))
+		}
+		
 		if lipgloss.Width(lastLog) > contentWidth - 10 {
 			lastLog = lastLog[:contentWidth-13] + "..."
 		}
