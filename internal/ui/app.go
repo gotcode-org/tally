@@ -19,6 +19,7 @@ package ui
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 	"gotcode.org/tally/internal/config"
 	"os"
@@ -730,7 +731,12 @@ func (m *MainModel) generateStandup() {
 		}
 	}
 
-	outFile := fmt.Sprintf("standup_%s.md", now.Format("2006-01-02"))
+	reportsDir := ""
+	if home, err := os.UserHomeDir(); err == nil {
+		reportsDir = filepath.Join(home, ".local", "share", "tally", "reports")
+		os.MkdirAll(reportsDir, 0755)
+	}
+	outFile := filepath.Join(reportsDir, fmt.Sprintf("standup_%s.md", now.Format("2006-01-02")))
 	os.WriteFile(outFile, []byte(sb.String()), 0644)
 	
 	m.standupText = sb.String()

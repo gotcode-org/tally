@@ -84,7 +84,12 @@ func newStandupCmd() *cobra.Command {
 			sb.WriteString("\n")
 
 			if outFile == "" {
-				outFile = fmt.Sprintf("standup_%s.md", now.Format("2006-01-02"))
+				reportsDir := ""
+				if home, err := os.UserHomeDir(); err == nil {
+					reportsDir = filepath.Join(home, ".local", "share", "tally", "reports")
+					os.MkdirAll(reportsDir, 0755)
+				}
+				outFile = filepath.Join(reportsDir, fmt.Sprintf("standup_%s.md", now.Format("2006-01-02")))
 			}
 
 			err = os.WriteFile(outFile, []byte(sb.String()), 0644)
