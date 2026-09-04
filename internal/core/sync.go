@@ -30,12 +30,22 @@ import (
 	"gotcode.org/tally/internal/config"
 )
 
+func logf(logChan chan<- string, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	if logChan != nil {
+		// Non-blocking send or simple block
+		logChan <- msg
+	} else {
+		fmt.Print(msg)
+	}
+}
+
 type ADOResponse struct {
 	ID int `json:"id"`
 }
 
 // Sync executes the network operations to push local data to ADO and 7pace.
-func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) error {
+func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string, logChan chan<- string) error {
 	tasks, err := a.Store.ListTasks("")
 	if err != nil {
 		return fmt.Errorf("failed to list tasks for sync: %w", err)
@@ -51,7 +61,7 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 		}
 
 		if t.ADOID == nil {
-			fmt.Printf("Syncing task %s to ADO...\n", t.ID)
+			logf(logChan, "Syncing task %s to ADO...\n", t.ID)
 			
 			adoType := t.ADOType
 			if adoType == "" {
@@ -141,10 +151,10 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 				t.ADOID = &adoResp.ID
 				t.UpdatedAt = time.Now()
 				a.Store.Save(t)
-				fmt.Printf("  -> Successfully created ADO Work Item #%d\n", *t.ADOID)
+				logf(logChan, "  -> Successfully created ADO Work Item #%d\n", *t.ADOID)
 			} else if resp.StatusCode == 400 && cfg.User.Email != "" {
 				resp.Body.Close()
-				fmt.Printf("  -> ADO rejected the AssignedTo identity. Retrying without assignment...\n")
+				logf(logChan, "  -> ADO rejected the AssignedTo identity. Retrying without assignment...\n")
 				
 				fallbackPatch := []map[string]interface{}{}
 				for _, p := range patch {
@@ -168,18 +178,18 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 					t.ADOID = &adoResp.ID
 					t.UpdatedAt = time.Now()
 					a.Store.Save(t)
-					fmt.Printf("  -> Successfully created ADO Work Item #%d (Unassigned)\n", *t.ADOID)
+					logf(logChan, "  -> Successfully created ADO Work Item #%d (Unassigned)\n", *t.ADOID)
 				} else {
 					if err == nil {
 						body, _ := io.ReadAll(resp2.Body)
 						resp2.Body.Close()
-						fmt.Printf("  -> Fallback also failed (HTTP %d). Response: %s\n", resp2.StatusCode, string(body))
+						logf(logChan, "  -> Fallback also failed (HTTP %d). Response: %s\n", resp2.StatusCode, string(body))
 					}
 				}
 			} else {
 				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
-				fmt.Printf("  -> Failed to create ADO item (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
+				logf(logChan, "  -> Failed to create ADO item (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
 				continue
 			}
 		}
@@ -262,17 +272,17 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 				if err == nil {
 					body, _ := io.ReadAll(resp.Body)
 					if resp.StatusCode >= 400 {
-						fmt.Printf("  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
+						logf(logChan, "  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
 					} else {
-						fmt.Printf("  -> Successfully updated ADO Work Item #%d\n", *t.ADOID)
+						logf(logChan, "  -> Successfully updated ADO Work Item #%d\n", *t.ADOID)
 						// Dump the payload we sent and the ADO response if debugging is enabled
 						if cfg.ADO.Debug {
-							fmt.Printf("     [DEBUG] Sent Payload: %s\n", string(payload))
+							logf(logChan, "     [DEBUG] Sent Payload: %s\n", string(payload))
 							respStr := string(body)
 							if len(respStr) > 500 {
 								respStr = respStr[:500] + "..."
 							}
-							fmt.Printf("     [DEBUG] ADO Response: %s\n", respStr)
+							logf(logChan, "     [DEBUG] ADO Response: %s\n", respStr)
 						}
 					}
 					resp.Body.Close()
@@ -287,7 +297,7 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 				continue
 			}
 
-			fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n\n\n", logEntry.Seconds, *t.ADOID)
+			logf(logChan, "Pushing %d seconds of time to 7pace for ADO #%d...\n\n\n", logEntry.Seconds, *t.ADOID)
 			
 			logData := map[string]interface{}{
 				"timestamp":  logEntry.Timestamp.Format(time.RFC3339),
@@ -321,10 +331,10 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string) err
 			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				logEntry.Synced = true
 				hasChanges = true
-				fmt.Printf("  -> Time successfully logged to 7pace!\n")
+				logf(logChan, "  -> Time successfully logged to 7pace!\n")
 			} else {
 				body, _ := io.ReadAll(resp.Body)
-				fmt.Printf("  -> Failed to log time to 7pace (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
+				logf(logChan, "  -> Failed to log time to 7pace (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
 			}
 			resp.Body.Close()
 		}
@@ -392,7 +402,7 @@ func parseMarkdownSections(body string) (description, acceptanceCriteria string)
 }
 
 // Fetch queries ADO for all work items assigned to the current user, and restores any missing local markdown files.
-func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) error {
+func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, logChan chan<- string) error {
 	client := &http.Client{Timeout: 30 * time.Second}
 	
 	fetchDays := cfg.ADO.FetchDays
@@ -435,7 +445,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 		}
 	}
 	
-	fmt.Printf("WIQL returned %d tasks assigned to you. Comparing against local files...\n", len(wiqlResp.WorkItems))
+	logf(logChan, "WIQL returned %d tasks assigned to you. Comparing against local files...\n", len(wiqlResp.WorkItems))
 	
 	var pendingTasks []*Task
 	childToParentADO := make(map[string]int)
@@ -443,7 +453,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 	
 	for _, wi := range wiqlResp.WorkItems {
 		if adoToLocal[wi.ID] == "" {
-			fmt.Printf("Restoring missing task ADO #%d...\n", wi.ID)
+			logf(logChan, "Restoring missing task ADO #%d...\n", wi.ID)
 			
 			// Fetch full details WITH RELATIONS
 			detailUrl := fmt.Sprintf("%s/_apis/wit/workitems/%d?api-version=7.0&$expand=relations", strings.TrimRight(cfg.ADO.Organization, "/"), wi.ID)
@@ -555,9 +565,9 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 							// Try raw map to see if it's returning something unexpected
 							var raw map[string]interface{}
 							json.Unmarshal(sBody, &raw)
-							fmt.Printf("  -> [DEBUG] 7pace API returned 200 but no time logs found. Raw payload keys: %v\n", raw)
+							logf(logChan, "  -> [DEBUG] 7pace API returned 200 but no time logs found. Raw payload keys: %v\n", raw)
 							if cfg.ADO.Debug {
-								fmt.Printf("  -> [DEBUG] Full 7pace payload: %s\n", string(sBody))
+								logf(logChan, "  -> [DEBUG] Full 7pace payload: %s\n", string(sBody))
 							}
 						}
 						
@@ -565,7 +575,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 							if l.WorkItemId != wi.ID && l.WorkItem.ID != wi.ID {
 								continue
 							}
-							fmt.Printf("  -> [DEBUG] Found 7pace log for user email: '%s' (%d seconds)\n", l.User.Email, l.Length)
+							logf(logChan, "  -> [DEBUG] Found 7pace log for user email: '%s' (%d seconds)\n", l.User.Email, l.Length)
 							targetEmail := cfg.SevenPace.Email
 							if targetEmail == "" {
 								targetEmail = cfg.User.Email
@@ -574,17 +584,17 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 							if targetEmail == "" || strings.EqualFold(l.User.Email, targetEmail) {
 								totalTime += l.Length
 							} else {
-								fmt.Printf("  -> [DEBUG] Ignoring time because config email is '%s' but log email is '%s'\n", targetEmail, l.User.Email)
+								logf(logChan, "  -> [DEBUG] Ignoring time because config email is '%s' but log email is '%s'\n", targetEmail, l.User.Email)
 							}
 						}
 						newTask.TotalSeconds = totalTime
 						newTask.SyncedSeconds = totalTime
 					} else {
-						fmt.Printf("  -> Warning: Failed to fetch 7pace time (HTTP %d): %s\n", sResp.StatusCode, string(sBody))
+						logf(logChan, "  -> Warning: Failed to fetch 7pace time (HTTP %d): %s\n", sResp.StatusCode, string(sBody))
 					}
 					sResp.Body.Close()
 				} else {
-					fmt.Printf("  -> Warning: Network error fetching 7pace time: %v\n", err)
+					logf(logChan, "  -> Warning: Network error fetching 7pace time: %v\n", err)
 				}
 			}
 			
@@ -609,7 +619,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 	// Pass 1.5: Fetch any missing Parents on-demand (e.g. if they fell outside the 14-day WIQL window)
 	for _, parentADO := range childToParentADO {
 		if adoToLocal[parentADO] == "" {
-			fmt.Printf("Fetching out-of-window parent ADO #%d...\n", parentADO)
+			logf(logChan, "Fetching out-of-window parent ADO #%d...\n", parentADO)
 			detailUrl := fmt.Sprintf("%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), parentADO)
 			req2, _ := http.NewRequest("GET", detailUrl, nil)
 			req2.SetBasicAuth("", adoPat)
@@ -688,12 +698,12 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string) er
 		a.Store.Save(t)
 	}
 	
-	fmt.Printf("Successfully restored %d missing tasks from ADO!\n", len(pendingTasks))
+	logf(logChan, "Successfully restored %d missing tasks from ADO!\n", len(pendingTasks))
 	return nil
 }
 
 // SyncSingle executes the network operations to push a single local task to ADO and 7pace.
-func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken string, taskID string) error {
+func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken string, taskID string, logChan chan<- string) error {
 	t, err := a.Store.Load(taskID)
 	if err != nil {
 		return fmt.Errorf("failed to load task %s: %w", taskID, err)
@@ -703,9 +713,9 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 	orgName := extractOrgName(cfg.ADO.Organization)
 
 	if t.ADOID == nil {
-		fmt.Printf("Task %s is not linked to ADO (no ADOID). Ignoring push.\n", t.ID)
+		logf(logChan, "Task %s is not linked to ADO (no ADOID). Ignoring push.\n", t.ID)
 	} else {
-		fmt.Printf("Syncing task %s (ADO #%d...\no ADO...\n", t.ID, *t.ADOID)
+		logf(logChan, "Syncing task %s (ADO #%d...\no ADO...\n", t.ID, *t.ADOID)
 		
 		patch := []map[string]interface{}{
 			{"op": "add", "path": "/fields/System.Title", "value": t.Title},
@@ -773,9 +783,9 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 		if err == nil {
 			body, _ := io.ReadAll(resp.Body)
 			if resp.StatusCode >= 400 {
-				fmt.Printf("  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
+				logf(logChan, "  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
 			} else {
-				fmt.Printf("  -> Successfully updated ADO Work Item #%d\n", *t.ADOID)
+				logf(logChan, "  -> Successfully updated ADO Work Item #%d\n", *t.ADOID)
 			}
 			resp.Body.Close()
 		}
@@ -788,7 +798,7 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 			continue
 		}
 
-		fmt.Printf("Pushing %d seconds of time to 7pace for ADO #%d...\n\n", logEntry.Seconds, *t.ADOID)
+		logf(logChan, "Pushing %d seconds of time to 7pace for ADO #%d...\n\n", logEntry.Seconds, *t.ADOID)
 		
 		logData := map[string]interface{}{
 			"timestamp":  logEntry.Timestamp.Format(time.RFC3339),
@@ -821,10 +831,10 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			logEntry.Synced = true
 			hasChanges = true
-			fmt.Printf("  -> Time successfully logged to 7pace!\n")
+			logf(logChan, "  -> Time successfully logged to 7pace!\n")
 		} else {
 			body, _ := io.ReadAll(resp.Body)
-			fmt.Printf("  -> Failed to log time to 7pace (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
+			logf(logChan, "  -> Failed to log time to 7pace (HTTP %d). Response: %s\n", resp.StatusCode, string(body))
 		}
 		resp.Body.Close()
 	}

@@ -19,18 +19,21 @@ package ui
 
 import (
 	"fmt"
-	"path/filepath"
-	"time"
-	"gotcode.org/tally/internal/config"
 	"os"
 	"os/exec"
-	"sort"
 	"strings"
+	"sort"
+	"time"
+	"path/filepath"
 
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"gotcode.org/tally/internal/config"
 	"gotcode.org/tally/internal/core"
 )
+
+type SyncLogMsg string
+type CloseModalMsg struct{}
 
 type AppState int
 
@@ -39,12 +42,16 @@ const (
 	StateCreateTask
 	StateLogTime
 	StateStandup
+	StateSyncing
 )
 
 type MainModel struct {
 	coreApp       *core.App
 	state         AppState
 	standupText   string
+	syncLogs      []string
+	syncErr       error
+	logChannel    chan string
 	list          ListModel
 	expandedState map[string]bool
 	form    *FormModel
@@ -538,33 +545,51 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case SyncTasksMsg:
-		// Execute the sync command in a shell so we can pause and let the user read the output
-		executable := os.Args[0]
-		script := `"$0" sync && echo '' && read -p 'Press Enter to return to Dashboard...'`
-		c := exec.Command("bash", "-c", script, executable)
-		return m, tea.ExecProcess(c, func(err error) tea.Msg {
-			return SyncFinishedMsg{Err: err}
-		})
+		m.state = StateSyncing
+		m.syncLogs = []string{"Starting Bulk Push..."}
+		m.syncErr = nil
+		m.logChannel = make(chan string, 100)
+		return m, tea.Batch(m.startSyncProcess("sync", ""), listenToLogs(m.logChannel))
 		
 	case PullTasksMsg:
-		executable := os.Args[0]
-		script := `"$0" fetch && echo '' && read -p 'Press Enter to return to Dashboard...'`
-		c := exec.Command("bash", "-c", script, executable)
-		return m, tea.ExecProcess(c, func(err error) tea.Msg {
-			return SyncFinishedMsg{Err: err}
-		})
+		m.state = StateSyncing
+		m.syncLogs = []string{"Starting ADO Fetch..."}
+		m.syncErr = nil
+		m.logChannel = make(chan string, 100)
+		return m, tea.Batch(m.startSyncProcess("fetch", ""), listenToLogs(m.logChannel))
 		
 	case PushSingleTaskMsg:
-		executable := os.Args[0]
-		script := fmt.Sprintf(`"$0" push "%s" && echo '' && read -p 'Press Enter to return to Dashboard...'`, msg.ID)
-		c := exec.Command("bash", "-c", script, executable)
-		return m, tea.ExecProcess(c, func(err error) tea.Msg {
-			return SyncFinishedMsg{Err: err}
-		})
+		m.state = StateSyncing
+		m.syncLogs = []string{"Starting Targeted Push..."}
+		m.syncErr = nil
+		m.logChannel = make(chan string, 100)
+		return m, tea.Batch(m.startSyncProcess("push_single", msg.ID), listenToLogs(m.logChannel))
 		
+	case SyncLogMsg:
+		m.syncLogs = append(m.syncLogs, string(msg))
+		// keep only last 50 lines to prevent memory issues
+		if len(m.syncLogs) > 50 {
+			m.syncLogs = m.syncLogs[len(m.syncLogs)-50:]
+		}
+		return m, listenToLogs(m.logChannel)
+
 	case SyncFinishedMsg:
 		m.coreApp.ReconcileRecurringTasks()
 		m.reloadList() // Pull fresh data in case sync updated anything locally
+		m.syncErr = msg.Err
+		if msg.Err == nil {
+			// Auto dismiss on success
+			return m, func() tea.Msg {
+				time.Sleep(800 * time.Millisecond)
+				return CloseModalMsg{}
+			}
+		}
+		return m, nil
+		
+	case CloseModalMsg:
+		if m.state == StateSyncing && m.syncErr == nil {
+			m.state = StateDashboard
+		}
 		return m, nil
 
 	case EditTaskMsg:
@@ -626,7 +651,27 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var newModel tea.Model
 		newModel, cmd = m.list.Update(msg)
 		m.list = newModel.(ListModel)
+	} else if m.state == StateStandup || m.state == StateSyncing {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			if msg.String() == "esc" || msg.String() == "q" || msg.String() == "enter" {
+				m.state = StateDashboard
+			}
+		case tea.WindowSizeMsg:
+			m.terminalWidth = msg.Width
+			m.terminalHeight = msg.Height
+		}
 	} else if m.state == StateStandup {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			if msg.String() == "esc" || msg.String() == "q" || msg.String() == "enter" {
+				m.state = StateDashboard
+			}
+		case tea.WindowSizeMsg:
+			m.terminalWidth = msg.Width
+			m.terminalHeight = msg.Height
+		}
+	} else if m.state == StateStandup || m.state == StateSyncing {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			if msg.String() == "esc" || msg.String() == "q" || msg.String() == "enter" {
@@ -658,6 +703,50 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *MainModel) View() string {
 	if (m.state == StateCreateTask || m.state == StateLogTime) && m.form != nil {
 		return m.form.View()
+	}
+	if m.state == StateSyncing {
+		w := m.terminalWidth
+		h := m.terminalHeight
+		
+		headerColor := ThemeMauve
+		if m.syncErr != nil {
+			headerColor = ThemeRed
+		} else if len(m.syncLogs) > 0 && strings.Contains(m.syncLogs[len(m.syncLogs)-1], "✅") {
+			headerColor = ThemeGreen
+		}
+		
+		headerFull := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(headerColor).Foreground(ThemeBase).Bold(true).Render(" SYNCHRONIZING ")
+		
+		var renderedLines []string
+		for _, l := range m.syncLogs {
+			style := lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).PaddingLeft(4)
+			if strings.Contains(l, "[ERROR]") || strings.Contains(l, "HTTP 400") {
+				style = style.Foreground(ThemeRed).Bold(true)
+			}
+			renderedLines = append(renderedLines, style.Render(l))
+		}
+		
+		for len(renderedLines) < h - 2 {
+			renderedLines = append(renderedLines, lipgloss.NewStyle().Background(ThemeOverlay).Width(w).Render(""))
+		}
+		
+		if len(renderedLines) > h - 2 {
+			renderedLines = renderedLines[len(renderedLines)-(h-2):]
+		}
+		
+		bodyContent := strings.Join(renderedLines, "\n")
+		paddedBody := lipgloss.NewStyle().Height(h - 2).Background(ThemeOverlay).Width(w).Render(bodyContent)
+		
+		footerText := " Syncing in progress... "
+		if m.syncErr != nil {
+			footerText = " [ERROR] Press esc/enter to dismiss "
+		} else if len(m.syncLogs) > 0 && strings.Contains(m.syncLogs[len(m.syncLogs)-1], "✅") {
+			footerText = " Complete! Returning to dashboard... "
+		}
+		
+		footer := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(headerColor).Foreground(ThemeBase).Bold(true).Render(footerText)
+		
+		return headerFull + "\n" + paddedBody + "\n" + footer
 	}
 	if m.state == StateStandup {
 		w := m.terminalWidth
@@ -776,4 +865,40 @@ func (m *MainModel) generateStandup() {
 	os.WriteFile(outFile, []byte(sb.String()), 0644)
 	
 	m.standupText = sb.String()
+}
+
+func listenToLogs(sub chan string) tea.Cmd {
+	return func() tea.Msg {
+		msg, ok := <-sub
+		if !ok {
+			return nil
+		}
+		return SyncLogMsg(msg)
+	}
+}
+func (m *MainModel) startSyncProcess(jobType string, targetID string) tea.Cmd {
+	return func() tea.Msg {
+		cfg, _ := config.Load()
+		adoPat := os.Getenv("ADO_PAT")
+		spToken := os.Getenv("SEVENPACE_TOKEN")
+		var err error
+
+		switch jobType {
+		case "sync":
+			err = m.coreApp.Sync(cfg, adoPat, spToken, m.logChannel)
+		case "fetch":
+			err = m.coreApp.Fetch(cfg, adoPat, spToken, m.logChannel)
+		case "push_single":
+			err = m.coreApp.SyncSingle(cfg, adoPat, spToken, targetID, m.logChannel)
+		}
+
+		if err != nil {
+			m.logChannel <- "[ERROR] " + err.Error()
+		} else {
+			m.logChannel <- "✅ Complete!"
+		}
+		
+		time.Sleep(200 * time.Millisecond) // let the UI drain the channel
+		return SyncFinishedMsg{Err: err}
+	}
 }

@@ -39,7 +39,7 @@ func newPushCmd() *cobra.Command {
 			app := core.NewApp(s)
 
 			fmt.Printf("Pushing isolated task %s to ADO...\n", targetID)
-			return app.SyncSingle(cfg, adoPat, sevenPaceToken, targetID)
+			return app.SyncSingle(cfg, adoPat, sevenPaceToken, targetID, nil)
 		},
 	}
 }

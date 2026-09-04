@@ -58,7 +58,7 @@ func newSyncCmd() *cobra.Command {
 			app := core.NewApp(s)
 
 			fmt.Println("Initializing Tally Enterprise Sync Engine...")
-			if err := app.Sync(cfg, adoPat, sevenPaceToken); err != nil {
+			if err := app.Sync(cfg, adoPat, sevenPaceToken, nil); err != nil {
 				return err
 			}
 
