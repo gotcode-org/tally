@@ -587,9 +587,17 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case SyncFinishedMsg:
 		m.coreApp.ReconcileRecurringTasks()
-		m.reloadList() // Pull fresh data in case sync updated anything locally
+		m.reloadList()
 		m.syncErr = msg.Err
+		
 		if msg.Err == nil {
+			if len(msg.Conflicts) > 0 {
+				// Don't auto dismiss to dashboard, transition to conflicts
+				m.conflictQueue = msg.Conflicts
+				m.state = StateConflict
+				return m, nil
+			}
+			
 			// Auto dismiss on success
 			return m, func() tea.Msg {
 				time.Sleep(800 * time.Millisecond)
