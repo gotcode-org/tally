@@ -642,7 +642,7 @@ func (m ListModel) View() string {
 	headerRow := lipgloss.NewStyle().Background(ThemeMauve).Render(m.renderHeader(widths))
 	
 	themeDisplay := GetCurrentThemeName()
-	helpStr := " ↑/↓: move • space: expand • enter/e: edit • n: new • a: add time • m: start (move) • x: delete • r: refresh • t: theme (" + themeDisplay + ") • esc: quit "
+	helpStr := " ↑/↓: move • space: expand • enter/e: edit • n: new • a: add time • m: start (move) • x: delete • r: report • t: theme (" + themeDisplay + ") • esc: quit "
 	
 	footerContent := helpStr
 	if m.TimeStats != "" {
