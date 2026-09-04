@@ -673,6 +673,38 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var cmd tea.Cmd
+	
+	if m.state == StateConflict {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "o", "O":
+				if len(m.conflictQueue) > 0 {
+					m.coreApp.Store.Save(m.conflictQueue[0])
+					m.conflictQueue = m.conflictQueue[1:]
+				}
+			case "k", "K":
+				if len(m.conflictQueue) > 0 {
+					remoteTask := m.conflictQueue[0]
+					localTask, _ := m.coreApp.Store.Load(remoteTask.ID)
+					if localTask != nil {
+						localTask.ADORev = remoteTask.ADORev
+						m.coreApp.Store.Save(localTask)
+					}
+					m.conflictQueue = m.conflictQueue[1:]
+				}
+			case "q", "esc":
+				m.conflictQueue = nil
+			}
+			
+			if len(m.conflictQueue) == 0 {
+				m.state = StateDashboard
+				m.reloadList()
+			}
+		}
+		return m, nil
+	}
+	
 	if m.state == StateDashboard {
 		var newModel tea.Model
 		newModel, cmd = m.list.Update(msg)
@@ -917,6 +949,30 @@ func (m *MainModel) View() string {
 		win := lipgloss.NewStyle().Background(ThemeOverlay).Width(w).Height(h).Render(headerFull + "\n" + paddedBody + "\n" + footer)
 		return lipgloss.Place(m.terminalWidth, m.terminalHeight, lipgloss.Center, lipgloss.Center, win)
 	}
+	if m.state == StateConflict {
+		if len(m.conflictQueue) == 0 {
+			return ""
+		}
+		t := m.conflictQueue[0]
+		w := int(float64(m.terminalWidth) * 0.50)
+		h := 14
+		
+		header := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(ThemeRed).Foreground(ThemeBase).Bold(true).Render(" CONFLICT DETECTED ")
+		
+		adoIDStr := "???"
+		if t.ADOID != nil {
+			adoIDStr = fmt.Sprintf("%d", *t.ADOID)
+		}
+		
+		body := fmt.Sprintf("\n  ADO #%s has been modified remotely.\n\n  Task: %s\n  Remote Revision: %d\n\n  Do you want to overwrite your local file with the remote changes?\n\n", adoIDStr, t.Title, t.ADORev)
+		
+		paddedBody := lipgloss.NewStyle().Height(h - 2).Background(ThemeOverlay).Width(w).Foreground(ThemeText).Render(body)
+		footer := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(ThemeRed).Foreground(ThemeBase).Bold(true).Render(" [O]verwrite Local • [K]eep Local • [esc] Abort ")
+		
+		win := lipgloss.NewStyle().Background(ThemeOverlay).Width(w).Height(h).Render(header + "\n" + paddedBody + "\n" + footer)
+		return lipgloss.Place(m.terminalWidth, m.terminalHeight, lipgloss.Center, lipgloss.Center, win)
+	}
+
 	return m.list.View()
 }
 
