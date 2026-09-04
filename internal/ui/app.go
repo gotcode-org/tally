@@ -879,8 +879,17 @@ func listenToLogs(sub chan string) tea.Cmd {
 func (m *MainModel) startSyncProcess(jobType string, targetID string) tea.Cmd {
 	return func() tea.Msg {
 		cfg, _ := config.Load()
-		adoPat := os.Getenv("ADO_PAT")
-		spToken := os.Getenv("SEVENPACE_TOKEN")
+		adoPat := os.Getenv("TALLY_ADO_PAT")
+		spToken := os.Getenv("TALLY_7PACE_TOKEN")
+		if spToken == "" {
+			spToken = adoPat
+		}
+		
+		if adoPat == "" {
+			m.logChannel <- "[ERROR] TALLY_ADO_PAT environment variable is missing!"
+			time.Sleep(200 * time.Millisecond)
+			return SyncFinishedMsg{Err: fmt.Errorf("missing ADO PAT")}
+		}
 		var err error
 
 		switch jobType {
