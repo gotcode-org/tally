@@ -161,8 +161,6 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "t":
 			return m, func() tea.Msg { return CycleThemeMsg{} }
-		case "r":
-			return m, func() tea.Msg { return RefreshMsg{} }
 		case "s":
 			return m, func() tea.Msg { return SyncTasksMsg{} }
 		case "p":
