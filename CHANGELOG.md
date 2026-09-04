@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Isolated Single-Task Sync (`u`)**: Added a targeted push feature mapped to `u` in the TUI (or `tally push <id>`) that instantly syncs a single task without incurring a full filesystem scan.
+- **Corporate Alias Configuration**: Added `email` to the `7pace` block in `config.yaml` to gracefully handle user environments with differing ADO/Git and 7pace domain logins.
+- **Tally Debug Task CLI**: Added `tally debug-task <id>` to instantly dump raw local task structs and yaml frontmatter to the console for troubleshooting.
+- **Missing Parent Discovery**: If a fetched child task references an ADO parent outside the 14-day rolling window, the engine fires an on-demand API request to fetch the parent story so the hierarchy never breaks.
+- **Historical 7pace Import**: Tally now fetches the user's historical 7pace logs during an ADO pull to reconstruct `TotalSeconds` and accurately portray past time.
+- **Interactive Deletion Prompt**: Replaced the immediate `x` deletion with an inline footer prompt requiring explicit `y`/`n` confirmation before destroying data.
+- **Fast Scroll Keybindings**: Added `Page Up` and `Page Down` keys (`pgup` / `pgdown`) to leap the cursor exactly one viewport height at a time.
+- **Automatic Story Sizing**: Tally automatically defaults empty ADO tasks to `story_points: 1.0` when fetching to satisfy strict ADO Agile state transition rules upon pushing.
+
+### Changed
+- **Create Form Streamlined**: Stripped the redundant "Backlog?" toggle entirely from the UI and CLI; tasks seamlessly start as `New`.
+
+### Fixed
+- **Massive Scrolling CPU Spikes**: Refactored the UI engine to cache flattened tree structures and pre-render expensive Lipgloss ANSI blocks. Drops CPU consumption during rapid key repeats from 100% to near 0%.
+- **Cursor Reset Bug**: The TUI cursor no longer wildly jumps back to the top (index 0) of the list after deleting a task, gracefully falling back to its nearest available index.
+- **UI State Persistence Loss**: Fixed a bug where Archive folders (Year, Month, Day) silently collapsed during UI refreshes due to tracking string path mismatches.
+- **OData Silent Query Failures**: Implemented a strict hardcoded Go validation pass against all 7pace API logs. If the 7pace API OData `&$filter` silently drops bounds, Tally protects local time calculations from runaway inflation.
+- **Bulk Fetch Sequence Collisions**: The ID generation engine now dynamically tracks in-memory sequence numbers during multi-task fetches to completely eliminate task overwriting (`.001` collisions).
+- **Missing Single-Push Payload Fields**: Injected missing Story Points, Swimlanes, and Hierarchy relation structures into the targeted `u` command's JSON payload so ADO stops rejecting single-task updates.
+
 ## [0.1.0] - 2026-09-02
 
 ### Added
