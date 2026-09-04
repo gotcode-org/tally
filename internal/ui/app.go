@@ -49,6 +49,7 @@ type MainModel struct {
 	coreApp       *core.App
 	state         AppState
 	standupText   string
+	standupScroll int
 	syncLogs      []string
 	syncErr       error
 	logChannel    chan string
@@ -614,6 +615,7 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case GenerateStandupMsg:
 		m.generateStandup()
+		m.standupScroll = 0
 		m.state = StateStandup
 		return m, nil
 
@@ -662,35 +664,20 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "esc" || msg.String() == "q" || msg.String() == "enter" {
 				m.state = StateDashboard
 			}
-		case tea.WindowSizeMsg:
-			m.terminalWidth = msg.Width
-			m.terminalHeight = msg.Height
-		}
-	} else if m.state == StateStandup {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			if msg.String() == "esc" || msg.String() == "q" || msg.String() == "enter" {
-				m.state = StateDashboard
-			}
-		case tea.WindowSizeMsg:
-			m.terminalWidth = msg.Width
-			m.terminalHeight = msg.Height
-		}
-	} else if m.state == StateStandup || m.state == StateSyncing {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			if msg.String() == "esc" || msg.String() == "q" || msg.String() == "enter" {
-				m.state = StateDashboard
-			}
-		case tea.WindowSizeMsg:
-			m.terminalWidth = msg.Width
-			m.terminalHeight = msg.Height
-		}
-	} else if m.state == StateStandup {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			if msg.String() == "esc" || msg.String() == "q" || msg.String() == "enter" {
-				m.state = StateDashboard
+			if m.state == StateStandup {
+				if msg.String() == "up" || msg.String() == "k" {
+					if m.standupScroll > 0 { m.standupScroll-- }
+				}
+				if msg.String() == "down" || msg.String() == "j" {
+					m.standupScroll++ 
+				}
+				if msg.String() == "pgup" {
+					m.standupScroll -= 10
+					if m.standupScroll < 0 { m.standupScroll = 0 }
+				}
+				if msg.String() == "pgdown" {
+					m.standupScroll += 10
+				}
 			}
 		case tea.WindowSizeMsg:
 			m.terminalWidth = msg.Width
@@ -811,31 +798,47 @@ func (m *MainModel) View() string {
 		return lipgloss.Place(m.terminalWidth, m.terminalHeight, lipgloss.Center, lipgloss.Center, win)
 	}
 	if m.state == StateStandup {
-		w := m.terminalWidth
-		h := m.terminalHeight
+		w := int(float64(m.terminalWidth) * 0.60)
+		if w < 70 { w = 70 }
+		if w > m.terminalWidth { w = m.terminalWidth }
+		
+		h := int(float64(m.terminalHeight) * 0.80)
+		if h < 20 { h = 20 }
+		if h > m.terminalHeight { h = m.terminalHeight }
 		
 		headerFull := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" STANDUP REPORT ")
 		
 		bodyLines := strings.Split(m.standupText, "\n")
+		contentWidth := w - 4
+		maxLines := h - 2
+		
+		maxScroll := len(bodyLines) - maxLines
+		if maxScroll < 0 { maxScroll = 0 }
+		if m.standupScroll > maxScroll { m.standupScroll = maxScroll }
+		
 		var renderedLines []string
-		for _, l := range bodyLines {
-			renderedLines = append(renderedLines, lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).PaddingLeft(4).Render(l))
+		endIdx := m.standupScroll + maxLines
+		if endIdx > len(bodyLines) { endIdx = len(bodyLines) }
+		
+		for _, l := range bodyLines[m.standupScroll:endIdx] {
+			rawLine := l
+			if lipgloss.Width(rawLine) > contentWidth {
+				rawLine = rawLine[:contentWidth-3] + "..."
+			}
+			renderedLines = append(renderedLines, lipgloss.NewStyle().Foreground(ThemeText).Background(ThemeOverlay).Width(contentWidth).PaddingLeft(4).Render(rawLine))
 		}
 		
-		for len(renderedLines) < h - 2 {
-			renderedLines = append(renderedLines, lipgloss.NewStyle().Background(ThemeOverlay).Width(w).Render(""))
-		}
-		
-		if len(renderedLines) > h - 2 {
-			renderedLines = renderedLines[:h-2]
+		for len(renderedLines) < maxLines {
+			renderedLines = append(renderedLines, lipgloss.NewStyle().Background(ThemeOverlay).Width(contentWidth).Render(""))
 		}
 		
 		bodyContent := strings.Join(renderedLines, "\n")
-		paddedBody := lipgloss.NewStyle().Height(h - 2).Background(ThemeOverlay).Width(w).Render(bodyContent)
+		paddedBody := lipgloss.NewStyle().Height(maxLines).Background(ThemeOverlay).Width(contentWidth).Render(bodyContent)
 		
-		footer := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" esc/q/enter: close ")
+		footer := lipgloss.NewStyle().Width(w).Align(lipgloss.Center).Background(ThemeMauve).Foreground(ThemeBase).Bold(true).Render(" ↑/↓/pgup/pgdown: scroll • esc/q/enter: close ")
 		
-		return headerFull + "\n" + paddedBody + "\n" + footer
+		win := lipgloss.NewStyle().Background(ThemeOverlay).Width(w).Height(h).Render(headerFull + "\n" + paddedBody + "\n" + footer)
+		return lipgloss.Place(m.terminalWidth, m.terminalHeight, lipgloss.Center, lipgloss.Center, win)
 	}
 	return m.list.View()
 }
