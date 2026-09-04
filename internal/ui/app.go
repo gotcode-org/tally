@@ -631,6 +631,16 @@ func (m *MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.terminalWidth = msg.Width
 			m.terminalHeight = msg.Height
 		}
+	} else if m.state == StateStandup {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			if msg.String() == "esc" || msg.String() == "q" || msg.String() == "enter" {
+				m.state = StateDashboard
+			}
+		case tea.WindowSizeMsg:
+			m.terminalWidth = msg.Width
+			m.terminalHeight = msg.Height
+		}
 	} else if m.state == StateCreateTask || m.state == StateLogTime {
 		var newModel tea.Model
 		newModel, cmd = m.form.Update(msg)
