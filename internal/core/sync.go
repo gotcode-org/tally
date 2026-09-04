@@ -275,6 +275,13 @@ func (a *App) Sync(cfg *config.Config, adoPat string, sevenPaceToken string, log
 					if resp.StatusCode >= 400 {
 						logf(logChan, "  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
 					} else {
+						var updateResp struct {
+							Rev int `json:"rev"`
+						}
+						if err := json.Unmarshal(body, &updateResp); err == nil && updateResp.Rev > 0 {
+							t.ADORev = updateResp.Rev
+							a.Store.Save(t) // Force save immediately so we don't rely on TimeLog changes
+						}
 						logf(logChan, "  -> Successfully updated ADO Work Item #%d\n", *t.ADOID)
 						// Dump the payload we sent and the ADO response if debugging is enabled
 						if cfg.ADO.Debug {
@@ -453,30 +460,59 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 	childToParentADO := make(map[string]int)
 	generatedSeqs := make(map[string]int)
 	
+	var allADOIDs []string
 	for _, wi := range wiqlResp.WorkItems {
-		if adoToLocal[wi.ID] == "" {
-			logf(logChan, "Restoring missing task ADO #%d...\n", wi.ID)
-			
-			// Fetch full details WITH RELATIONS
-			detailUrl := fmt.Sprintf("%s/_apis/wit/workitems/%d?api-version=7.0&$expand=relations", strings.TrimRight(cfg.ADO.Organization, "/"), wi.ID)
-			req2, _ := http.NewRequest("GET", detailUrl, nil)
-			req2.SetBasicAuth("", adoPat)
-			
-			resp2, err := client.Do(req2)
-			if err != nil || resp2.StatusCode >= 400 {
-				continue
-			}
-			
-			var details struct {
+		allADOIDs = append(allADOIDs, strconv.Itoa(wi.ID))
+	}
+	
+	for i := 0; i < len(allADOIDs); i += 50 {
+		end := i + 50
+		if end > len(allADOIDs) {
+			end = len(allADOIDs)
+		}
+		chunk := allADOIDs[i:end]
+		
+		detailUrl := fmt.Sprintf("%s/_apis/wit/workitems?ids=%s&api-version=7.0&$expand=relations", strings.TrimRight(cfg.ADO.Organization, "/"), strings.Join(chunk, ","))
+		req2, _ := http.NewRequest("GET", detailUrl, nil)
+		req2.SetBasicAuth("", adoPat)
+		
+		resp2, err := client.Do(req2)
+		if err != nil || resp2.StatusCode >= 400 {
+			continue
+		}
+		
+		var batchDetails struct {
+			Value []struct {
+				ID int `json:"id"`
+				Rev int `json:"rev"`
 				Fields map[string]interface{} `json:"fields"`
 				Relations []struct {
 					Rel string `json:"rel"`
 					URL string `json:"url"`
 				} `json:"relations"`
+			} `json:"value"`
+		}
+		dBody, _ := io.ReadAll(resp2.Body)
+		resp2.Body.Close()
+		json.Unmarshal(dBody, &batchDetails)
+		
+		for _, details := range batchDetails.Value {
+			localID := adoToLocal[details.ID]
+			var existingTask *Task
+			if localID != "" {
+				existingTask, _ = a.Store.Load(localID)
 			}
-			dBody, _ := io.ReadAll(resp2.Body)
-			resp2.Body.Close()
-			json.Unmarshal(dBody, &details)
+			
+			if existingTask != nil && existingTask.ADORev >= details.Rev {
+				// We are up to date or ahead
+				continue
+			}
+			
+			if existingTask == nil {
+				logf(logChan, "Restoring missing task ADO #%d...\n", details.ID)
+			} else {
+				logf(logChan, "Conflict detected for ADO #%d. Remote Rev (%d) > Local (%d). Resolving...\n", details.ID, details.Rev, existingTask.ADORev)
+			}
 			
 			title, _ := details.Fields["System.Title"].(string)
 			state, _ := details.Fields["System.State"].(string)
@@ -503,24 +539,6 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 				updatedAt = t
 			}
 			
-			// We must manually track sequences in memory since we don't save until Pass 2
-			baseID, _ := a.Store.GetNextID(createdAt, false)
-			prefix := baseID[:9] // e.g. 20260903.
-			
-			seq := 1
-			if val, exists := generatedSeqs[prefix]; exists {
-				seq = val + 1
-			} else {
-				// Parse the sequence from baseID
-				if len(baseID) > 9 {
-					fmt.Sscanf(baseID[9:], "%d", &seq)
-				}
-			}
-			generatedSeqs[prefix] = seq
-			newID := fmt.Sprintf("%s%03d", prefix, seq)
-			
-			adoIdVal := wi.ID
-			
 			descriptionHTML, _ := details.Fields["System.Description"].(string)
 			acHTML, _ := details.Fields["Microsoft.VSTS.Common.AcceptanceCriteria"].(string)
 			
@@ -542,89 +560,98 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 				}
 			}
 			
-			newTask := &Task{
-				ID: newID,
-				Title: title,
-				Status: TaskState(state),
-				ADOType: adoType,
-				StoryPoints: spPtr,
-				ADOID: &adoIdVal,
-				CreatedAt: createdAt,
-				UpdatedAt: updatedAt,
-				Body: bodyBuilder.String(),
+			adoIdVal := details.ID
+			var newTask *Task
+			
+			if existingTask == nil {
+				baseID, _ := a.Store.GetNextID(createdAt, false)
+				prefix := baseID[:9]
+				
+				seq := 1
+				if val, exists := generatedSeqs[prefix]; exists {
+					seq = val + 1
+				} else {
+					if len(baseID) > 9 {
+						fmt.Sscanf(baseID[9:], "%d", &seq)
+					}
+				}
+				generatedSeqs[prefix] = seq
+				newID := fmt.Sprintf("%s%03d", prefix, seq)
+				
+				newTask = &Task{
+					ID: newID,
+					CreatedAt: createdAt,
+					TotalSeconds: 0,
+					SyncedSeconds: 0,
+				}
+				adoToLocal[details.ID] = newID
+			} else {
+				newTask = existingTask
 			}
 			
-			// Fetch existing time from 7pace
-			orgName := extractOrgName(cfg.ADO.Organization)
-			if orgName != "" && sevenPaceToken != "" {
-				sevenUrl := fmt.Sprintf("https://%s.timehub.7pace.com/api/rest/workLogs?api-version=3.1&$filter=WorkItemId%%20eq%%20%d", orgName, wi.ID)
-				sReq, _ := http.NewRequest("GET", sevenUrl, nil)
-				sReq.Header.Set("Authorization", "Bearer "+sevenPaceToken)
-				sResp, err := client.Do(sReq)
-				if err == nil {
-					sBody, _ := io.ReadAll(sResp.Body)
-					if sResp.StatusCode == 200 {
-						type WorkLog struct {
-							Length int `json:"length"`
-							WorkItemId int `json:"workItemId"`
-							WorkItem struct {
-								ID int `json:"id"`
-							} `json:"workItem"`
-							User struct {
-								Email string `json:"email"`
-							} `json:"user"`
-						}
-						
-						var sData struct {
-							Data  []WorkLog `json:"data"`
-							Items []WorkLog `json:"items"`
-							Value []WorkLog `json:"value"`
-						}
-						
-						json.Unmarshal(sBody, &sData)
-						
-						totalTime := 0
-						allLogs := append(sData.Data, append(sData.Items, sData.Value...)...)
-						
-						if len(allLogs) == 0 {
-							// Try raw map to see if it's returning something unexpected
-							var raw map[string]interface{}
-							json.Unmarshal(sBody, &raw)
-							logf(logChan, "  -> [DEBUG] 7pace API returned 200 but no time logs found. Raw payload keys: %v\n", raw)
-							if cfg.ADO.Debug {
-								logf(logChan, "  -> [DEBUG] Full 7pace payload: %s\n", string(sBody))
-							}
-						}
-						
-						for _, l := range allLogs {
-							if l.WorkItemId != wi.ID && l.WorkItem.ID != wi.ID {
-								continue
-							}
-							logf(logChan, "  -> [DEBUG] Found 7pace log for user email: '%s' (%d seconds)\n", l.User.Email, l.Length)
-							targetEmail := cfg.SevenPace.Email
-							if targetEmail == "" {
-								targetEmail = cfg.User.Email
+			newTask.Title = title
+			newTask.Status = TaskState(state)
+			newTask.ADOType = adoType
+			newTask.StoryPoints = spPtr
+			newTask.ADOID = &adoIdVal
+			newTask.ADORev = details.Rev
+			newTask.UpdatedAt = updatedAt
+			newTask.Body = bodyBuilder.String()
+			
+			// If missing, also pull 7pace time
+			if existingTask == nil {
+				orgName := extractOrgName(cfg.ADO.Organization)
+				if orgName != "" && sevenPaceToken != "" {
+					sevenUrl := fmt.Sprintf("https://%s.timehub.7pace.com/api/rest/workLogs?api-version=3.1&$filter=WorkItemId%%20eq%%20%d", orgName, details.ID)
+					sReq, _ := http.NewRequest("GET", sevenUrl, nil)
+					sReq.Header.Set("Authorization", "Bearer "+sevenPaceToken)
+					sResp, err := client.Do(sReq)
+					if err == nil {
+						sBody, _ := io.ReadAll(sResp.Body)
+						if sResp.StatusCode == 200 {
+							type WorkLog struct {
+								Length int `json:"length"`
+								WorkItemId int `json:"workItemId"`
+								WorkItem struct {
+									ID int `json:"id"`
+								} `json:"workItem"`
+								User struct {
+									Email string `json:"email"`
+								} `json:"user"`
 							}
 							
-							if targetEmail == "" || strings.EqualFold(l.User.Email, targetEmail) {
-								totalTime += l.Length
-							} else {
-								logf(logChan, "  -> [DEBUG] Ignoring time because config email is '%s' but log email is '%s'\n", targetEmail, l.User.Email)
+							var sData struct {
+								Data  []WorkLog `json:"data"`
+								Items []WorkLog `json:"items"`
+								Value []WorkLog `json:"value"`
 							}
+							
+							json.Unmarshal(sBody, &sData)
+							
+							totalTime := 0
+							allLogs := append(sData.Data, append(sData.Items, sData.Value...)...)
+							
+							for _, l := range allLogs {
+								if l.WorkItemId != details.ID && l.WorkItem.ID != details.ID {
+									continue
+								}
+								targetEmail := cfg.SevenPace.Email
+								if targetEmail == "" {
+									targetEmail = cfg.User.Email
+								}
+								
+								if targetEmail == "" || strings.EqualFold(l.User.Email, targetEmail) {
+									totalTime += l.Length
+								}
+							}
+							newTask.TotalSeconds = totalTime
+							newTask.SyncedSeconds = totalTime
 						}
-						newTask.TotalSeconds = totalTime
-						newTask.SyncedSeconds = totalTime
-					} else {
-						logf(logChan, "  -> Warning: Failed to fetch 7pace time (HTTP %d): %s\n", sResp.StatusCode, string(sBody))
+						sResp.Body.Close()
 					}
-					sResp.Body.Close()
-				} else {
-					logf(logChan, "  -> Warning: Network error fetching 7pace time: %v\n", err)
 				}
 			}
 			
-			// Register in map so subsequent children can find it
-			adoToLocal[wi.ID] = newID
 			pendingTasks = append(pendingTasks, newTask)
 			
 			// Check for parent relation
@@ -633,7 +660,7 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 					parts := strings.Split(rel.URL, "/")
 					if len(parts) > 0 {
 						if parentID, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
-							childToParentADO[newID] = parentID
+							childToParentADO[newTask.ID] = parentID
 						}
 					}
 				}
@@ -833,6 +860,13 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 			if resp.StatusCode >= 400 {
 				logf(logChan, "  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
 			} else {
+				var updateResp struct {
+					Rev int `json:"rev"`
+				}
+				if err := json.Unmarshal(body, &updateResp); err == nil && updateResp.Rev > 0 {
+					t.ADORev = updateResp.Rev
+					a.Store.Save(t)
+				}
 				logf(logChan, "  -> Successfully updated ADO Work Item #%d\n", *t.ADOID)
 			}
 			resp.Body.Close()

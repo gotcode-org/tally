@@ -44,6 +44,7 @@ type Task struct {
 
 	// Azure DevOps Metadata
 	ADOID   *int   `yaml:"ado_id,omitempty"`   // Nil if not yet synced to ADO
+	ADORev      int      `yaml:"ado_rev,omitempty"`  // ADO Revision for conflict resolution
 	ADOType     string   `yaml:"ado_type,omitempty"` // e.g., "Story", "Technical Story", "Bug"
 	StoryPoints *float64 `yaml:"story_points,omitempty"` // Mapped to ADO Story Points
 	Swimlane    string   `yaml:"swimlane,omitempty"`
