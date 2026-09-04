@@ -786,10 +786,10 @@ func (a *App) Fetch(cfg *config.Config, adoPat string, sevenPaceToken string, lo
 }
 
 // SyncSingle executes the network operations to push a single local task to ADO and 7pace.
-func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken string, taskID string, logChan chan<- string) error {
+func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken string, taskID string, logChan chan<- string) ([]*Task, error) {
 	t, err := a.Store.Load(taskID)
 	if err != nil {
-		return fmt.Errorf("failed to load task %s: %w", taskID, err)
+		return nil, fmt.Errorf("failed to load task %s: %w", taskID, err)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -800,10 +800,16 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 	} else {
 		logf(logChan, "Syncing task %s (ADO #%d...\no ADO...\n", t.ID, *t.ADOID)
 		
-		patch := []map[string]interface{}{
-			{"op": "add", "path": "/fields/System.Title", "value": t.Title},
-			{"op": "add", "path": "/fields/System.State", "value": string(t.Status)},
+		patch := []map[string]interface{}{}
+		if t.ADORev > 0 {
+			patch = append(patch, map[string]interface{}{
+				"op": "test", "path": "/rev", "value": t.ADORev,
+			})
 		}
+		patch = append(patch,
+			map[string]interface{}{"op": "add", "path": "/fields/System.Title", "value": t.Title},
+			map[string]interface{}{"op": "add", "path": "/fields/System.State", "value": string(t.Status)},
+		)
 		
 		if t.Body != "" {
 			desc, ac := parseMarkdownSections(t.Body)
@@ -866,7 +872,31 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 		if err == nil {
 			body, _ := io.ReadAll(resp.Body)
 			if resp.StatusCode >= 400 {
-				logf(logChan, "  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, string(body))
+				bodyStr := string(body)
+				if strings.Contains(bodyStr, "TF401346") || strings.Contains(bodyStr, "rev") || resp.StatusCode == 412 || resp.StatusCode == 400 {
+					logf(logChan, "  -> Conflict! ADO item #%d was modified remotely. Fetching details...\n", *t.ADOID)
+					detailUrl := fmt.Sprintf("%s/_apis/wit/workitems/%d?api-version=7.0", strings.TrimRight(cfg.ADO.Organization, "/"), *t.ADOID)
+					reqF, _ := http.NewRequest("GET", detailUrl, nil)
+					reqF.SetBasicAuth("", adoPat)
+					respF, err := client.Do(reqF)
+					if err == nil && respF.StatusCode == 200 {
+						var details struct {
+							ID int `json:"id"`
+							Rev int `json:"rev"`
+							Fields map[string]interface{} `json:"fields"`
+						}
+						dBody, _ := io.ReadAll(respF.Body)
+						json.Unmarshal(dBody, &details)
+						respF.Body.Close()
+						taskCopy := *t
+						newTask := &taskCopy
+						newTask.ADORev = details.Rev
+						if val, ok := details.Fields["System.Title"].(string); ok { newTask.Title = val }
+						if val, ok := details.Fields["System.State"].(string); ok { newTask.Status = TaskState(val) }
+						return []*Task{newTask}, nil
+					}
+				}
+				logf(logChan, "  -> ADO rejected update for task %s (HTTP %d). Response: %s\n", t.ID, resp.StatusCode, bodyStr)
 			} else {
 				var updateResp struct {
 					Rev int `json:"rev"`
@@ -915,7 +945,7 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 
 		resp, err := client.Do(req)
 		if err != nil {
-			return fmt.Errorf("network error hitting 7pace: %w", err)
+			return nil, fmt.Errorf("network error hitting 7pace: %w", err)
 		}
 		
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
@@ -940,5 +970,5 @@ func (a *App) SyncSingle(cfg *config.Config, adoPat string, sevenPaceToken strin
 		a.Store.Save(t)
 	}
 
-	return nil
+	return nil, nil
 }
